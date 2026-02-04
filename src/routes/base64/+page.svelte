@@ -88,33 +88,27 @@
 
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 		<!-- Input Section -->
-		<div class="form-control">
-			<label class="label" for="input-text">
-				<span class="label-text font-semibold">Input</span>
-				<span class="label-text-alt text-base-content/50">{input.length} characters</span>
-			</label>
+		<fieldset class="fieldset w-full">
+			<legend class="fieldset-legend">Input <span class="font-normal text-base-content/50">{input.length} characters</span></legend>
 			<textarea
 				id="input-text"
-				class="textarea textarea-bordered h-64 font-mono text-sm"
+				class="textarea textarea-bordered h-64 font-mono text-sm w-full"
 				placeholder="Enter text to encode or Base64 to decode..."
 				bind:value={input}
 			></textarea>
-		</div>
+		</fieldset>
 
 		<!-- Output Section -->
-		<div class="form-control">
-			<label class="label" for="output-text">
-				<span class="label-text font-semibold">Output</span>
-				<span class="label-text-alt text-base-content/50">{output.length} characters</span>
-			</label>
+		<fieldset class="fieldset w-full">
+			<legend class="fieldset-legend">Output <span class="font-normal text-base-content/50">{output.length} characters</span></legend>
 			<textarea
 				id="output-text"
-				class="textarea textarea-bordered h-64 font-mono text-sm bg-base-200"
+				class="textarea textarea-bordered h-64 font-mono text-sm bg-base-200 w-full"
 				placeholder="Result will appear here..."
 				readonly
 				value={output}
 			></textarea>
-		</div>
+		</fieldset>
 	</div>
 
 	<!-- Action Buttons -->

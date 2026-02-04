@@ -201,14 +201,11 @@
 
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 		<!-- Input Section -->
-		<div class="form-control">
-			<label class="label" for="json-input">
-				<span class="label-text font-semibold">Input JSON</span>
-				<span class="label-text-alt text-base-content/50">{input.length} characters</span>
-			</label>
+		<fieldset class="fieldset w-full">
+			<legend class="fieldset-legend">Input JSON <span class="font-normal text-base-content/50">{input.length} characters</span></legend>
 			<textarea
 				id="json-input"
-				class="textarea textarea-bordered h-80 font-mono text-sm"
+				class="textarea textarea-bordered h-80 font-mono text-sm w-full"
 				placeholder={'Enter JSON here, e.g. {"key": "value"}'}
 				bind:value={input}
 			></textarea>
@@ -217,14 +214,11 @@
 					Load sample JSON
 				</button>
 			</div>
-		</div>
+		</fieldset>
 
 		<!-- Output Section -->
-		<div class="form-control">
-			<label class="label" for="json-output">
-				<span class="label-text font-semibold">Output</span>
-				<span class="label-text-alt text-base-content/50">{output.length} characters</span>
-			</label>
+		<fieldset class="fieldset w-full">
+			<legend class="fieldset-legend">Output <span class="font-normal text-base-content/50">{output.length} characters</span></legend>
 			<div class="relative">
 				{#if highlightedOutput}
 					<!-- Safe to use {@html} here because:
@@ -243,20 +237,18 @@
 					></textarea>
 				{/if}
 			</div>
-		</div>
+		</fieldset>
 	</div>
 
 	<!-- Options Bar -->
 	<div class="flex flex-wrap items-center gap-4 mt-6 p-4 bg-base-200 rounded-lg">
-		<div class="form-control">
-			<label class="label cursor-pointer gap-2">
-				<span class="label-text">Indent:</span>
-				<select class="select select-bordered select-sm" bind:value={indentSize}>
-					<option value={2}>2 spaces</option>
-					<option value={4}>4 spaces</option>
-				</select>
-			</label>
-		</div>
+		<label class="select">
+			<span class="label">Indent:</span>
+			<select bind:value={indentSize}>
+				<option value={2}>2 spaces</option>
+				<option value={4}>4 spaces</option>
+			</select>
+		</label>
 	</div>
 
 	<!-- Action Buttons -->
