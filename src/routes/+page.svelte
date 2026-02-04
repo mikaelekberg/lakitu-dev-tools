@@ -1,17 +1,19 @@
 <script lang="ts">
 	import ToolCard from '$lib/components/ToolCard.svelte';
-	import { FileKey, Braces, KeyRound } from 'lucide-svelte';
+	import { FileKey, Braces, KeyRound, Fingerprint } from 'lucide-svelte';
 
 	const tools = [
 		{
 			title: 'Base64 Encoder/Decoder',
-			description: 'Encode text to Base64 or decode Base64 back to text. Supports Unicode characters.',
+			description:
+				'Encode text to Base64 or decode Base64 back to text. Supports Unicode characters.',
 			href: '/base64',
 			icon: FileKey
 		},
 		{
 			title: 'JSON Formatter/Validator',
-			description: 'Format, validate, and minify JSON with syntax highlighting and error detection.',
+			description:
+				'Format, validate, and minify JSON with syntax highlighting and error detection.',
 			href: '/json',
 			icon: Braces
 		},
@@ -20,23 +22,32 @@
 			description: 'Decode, verify, and create JSON Web Tokens with HS256 signature support.',
 			href: '/jwt',
 			icon: KeyRound
+		},
+		{
+			title: 'UUID/GUID Generator',
+			description:
+				'Generate UUID v4, UUID v7, or ULID unique identifiers with customizable formats.',
+			href: '/uuid',
+			icon: Fingerprint
 		}
 	];
 </script>
 
 <svelte:head>
 	<title>Lakitu.dev - Developer Utility Tools</title>
-	<meta name="description" content="Free online developer utility tools including Base64 encoder/decoder, JSON formatter/validator, and more. All tools run client-side for privacy." />
+	<meta
+		name="description"
+		content="Free online developer utility tools including Base64 encoder/decoder, JSON formatter/validator, and more. All tools run client-side for privacy."
+	/>
 </svelte:head>
 
 <div class="max-w-4xl mx-auto">
 	<!-- Hero Section -->
 	<section class="text-center mb-12">
-		<h1 class="text-4xl md:text-5xl font-bold mb-4">
-			Developer Utility Tools
-		</h1>
+		<h1 class="text-4xl md:text-5xl font-bold mb-4">Developer Utility Tools</h1>
 		<p class="text-lg text-base-content/70 max-w-2xl mx-auto">
-			Free, fast, and privacy-focused tools for developers. All processing happens in your browser - your data never leaves your device.
+			Free, fast, and privacy-focused tools for developers. All processing happens in your browser -
+			your data never leaves your device.
 		</p>
 	</section>
 

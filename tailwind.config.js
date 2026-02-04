@@ -7,7 +7,14 @@ export default {
 		extend: {
 			fontFamily: {
 				sans: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-				mono: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Consolas', 'monospace']
+				mono: [
+					'"JetBrains Mono Variable"',
+					'JetBrains Mono',
+					'ui-monospace',
+					'SFMono-Regular',
+					'Consolas',
+					'monospace'
+				]
 			}
 		}
 	},

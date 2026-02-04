@@ -25,9 +25,7 @@
 		</h2>
 		<p class="text-base-content/70">{description}</p>
 		<div class="card-actions justify-end mt-2">
-			<span class="text-primary text-sm font-medium">
-				Open tool &rarr;
-			</span>
+			<span class="text-primary text-sm font-medium"> Open tool &rarr; </span>
 		</div>
 	</div>
 </a>

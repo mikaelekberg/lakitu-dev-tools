@@ -123,6 +123,7 @@ npm install -D @types/node
 ### Configuration Files
 
 #### `svelte.config.js`
+
 ```javascript
 import adapter from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
@@ -144,6 +145,7 @@ export default config;
 ```
 
 #### `package.json`
+
 ```json
 "dependencies": {
   "@sveltejs/kit": "^2.0.0",
@@ -158,6 +160,7 @@ export default config;
 ```
 
 #### `tailwind.config.js`
+
 ```javascript
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -177,6 +180,7 @@ export default {
 ```
 
 #### `src/app.css`
+
 ```css
 @tailwind base;
 @tailwind components;
@@ -184,6 +188,7 @@ export default {
 ```
 
 #### `src/routes/+layout.svelte`
+
 ```svelte
 <script lang="ts">
 	import '../app.css';
@@ -219,7 +224,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -283,6 +288,7 @@ You need to add the following secrets to your GitHub repository:
 ### Navigation Component (`src/lib/components/Navigation.svelte`)
 
 Should include:
+
 - Site logo/title "Lakitu.dev"
 - Links to all tools
 - Dark mode toggle button
@@ -292,6 +298,7 @@ Should include:
 ### Tool Card Component (`src/lib/components/ToolCard.svelte`)
 
 Props:
+
 - `title: string` - Tool name
 - `description: string` - Brief description
 - `href: string` - Link to tool
@@ -300,6 +307,7 @@ Props:
 ### Base64 Tool (`src/routes/base64/+page.svelte`)
 
 Features:
+
 - Two-way conversion (encode/decode)
 - Large textarea inputs
 - Copy button for output
@@ -310,6 +318,7 @@ Features:
 ### JSON Tool (`src/routes/json/+page.svelte`)
 
 Features:
+
 - Validation with error messages (line/column numbers)
 - Format with 2 or 4 space indentation
 - Minify option
@@ -383,15 +392,15 @@ Use DaisyUI's theme system with a toggle:
 ```svelte
 <script lang="ts">
 	import { onMount } from 'svelte';
-	
+
 	let theme = 'light';
-	
+
 	onMount(() => {
 		const stored = localStorage.getItem('theme') || 'light';
 		theme = stored;
 		document.documentElement.setAttribute('data-theme', theme);
 	});
-	
+
 	function toggleTheme() {
 		theme = theme === 'light' ? 'dark' : 'light';
 		localStorage.setItem('theme', theme);
@@ -427,6 +436,7 @@ When adding new tools:
 ## Testing Checklist
 
 Before deploying:
+
 - [ ] All tools work correctly in both light and dark mode
 - [ ] Copy to clipboard works on all tools
 - [ ] Error messages are clear and helpful
@@ -441,6 +451,7 @@ Before deploying:
 ## Deployment Steps
 
 1. **Initial setup**:
+
    ```bash
    git init
    git add .
@@ -470,6 +481,7 @@ Before deploying:
 ## Success Criteria
 
 The project is complete when:
+
 1. Site is live at lakitu.dev
 2. Both Base64 and JSON tools are fully functional
 3. Dark mode toggle works and persists

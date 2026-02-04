@@ -10,7 +10,8 @@
 		{ href: '/', label: 'Home' },
 		{ href: '/base64', label: 'Base64' },
 		{ href: '/json', label: 'JSON' },
-		{ href: '/jwt', label: 'JWT' }
+		{ href: '/jwt', label: 'JWT' },
+		{ href: '/uuid', label: 'UUID' }
 	];
 
 	onMount(() => {
