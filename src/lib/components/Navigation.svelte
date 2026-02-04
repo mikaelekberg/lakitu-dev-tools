@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
+	import { Hammer } from 'lucide-svelte';
 
 	let theme = $state('light');
 	let mobileMenuOpen = $state(false);
@@ -48,7 +49,8 @@
 	<div class="container mx-auto flex flex-row items-center">
 		<!-- Logo -->
 		<div class="flex-1">
-			<a href="/" class="btn btn-ghost text-xl font-bold" aria-label="Lakitu.dev Home">
+			<a href="/" class="btn btn-ghost text-xl font-bold gap-2" aria-label="Lakitu.dev Home">
+				<Hammer class="h-6 w-6 text-primary" />
 				Lakitu.dev
 			</a>
 		</div>
