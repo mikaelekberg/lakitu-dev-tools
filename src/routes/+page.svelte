@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ToolCard from '$lib/components/ToolCard.svelte';
-	import { FileKey, Braces, KeyRound, Fingerprint, Clock } from 'lucide-svelte';
+	import { FileKey, Braces, KeyRound, Fingerprint, Clock, Regex } from 'lucide-svelte';
 
 	const tools = [
 		{
@@ -36,6 +36,13 @@
 				'Parse, validate, and build cron expressions with human-readable explanations and next run times.',
 			href: '/cron',
 			icon: Clock
+		},
+		{
+			title: 'Regex Tester',
+			description:
+				'Test regular expressions with real-time matching, capture group highlighting, and common patterns library.',
+			href: '/regex',
+			icon: Regex
 		}
 	];
 </script>
