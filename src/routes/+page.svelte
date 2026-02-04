@@ -1,50 +1,6 @@
 <script lang="ts">
 	import ToolCard from '$lib/components/ToolCard.svelte';
-	import { FileKey, Braces, KeyRound, Fingerprint, Clock, Regex } from 'lucide-svelte';
-
-	const tools = [
-		{
-			title: 'Base64 Encoder/Decoder',
-			description:
-				'Encode text to Base64 or decode Base64 back to text. Supports Unicode characters.',
-			href: '/base64',
-			icon: FileKey
-		},
-		{
-			title: 'JSON Formatter/Validator',
-			description:
-				'Format, validate, and minify JSON with syntax highlighting and error detection.',
-			href: '/json',
-			icon: Braces
-		},
-		{
-			title: 'JWT Decoder/Encoder',
-			description: 'Decode, verify, and create JSON Web Tokens with HS256 signature support.',
-			href: '/jwt',
-			icon: KeyRound
-		},
-		{
-			title: 'UUID/GUID Generator',
-			description:
-				'Generate UUID v4, UUID v7, or ULID unique identifiers with customizable formats.',
-			href: '/uuid',
-			icon: Fingerprint
-		},
-		{
-			title: 'Cron Expression Parser',
-			description:
-				'Parse, validate, and build cron expressions with human-readable explanations and next run times.',
-			href: '/cron',
-			icon: Clock
-		},
-		{
-			title: 'Regex Tester',
-			description:
-				'Test regular expressions with real-time matching, capture group highlighting, and common patterns library.',
-			href: '/regex',
-			icon: Regex
-		}
-	];
+	import { tools, getToolHref } from '$lib/config/tools';
 </script>
 
 <svelte:head>
@@ -73,7 +29,7 @@
 				<ToolCard
 					title={tool.title}
 					description={tool.description}
-					href={tool.href}
+					href={getToolHref(tool)}
 					icon={tool.icon}
 				/>
 			{/each}

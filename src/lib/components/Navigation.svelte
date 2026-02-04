@@ -1,20 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	import { Hammer } from 'lucide-svelte';
+	import { Hammer, ChevronDown } from 'lucide-svelte';
+	import { tools, getToolHref } from '$lib/config/tools';
 
 	let theme = $state('light');
 	let mobileMenuOpen = $state(false);
-
-	const navLinks = [
-		{ href: '/', label: 'Home' },
-		{ href: '/base64', label: 'Base64' },
-		{ href: '/json', label: 'JSON' },
-		{ href: '/jwt', label: 'JWT' },
-		{ href: '/uuid', label: 'UUID' },
-		{ href: '/cron', label: 'Cron' },
-		{ href: '/regex', label: 'Regex' }
-	];
+	let dropdownOpen = $state(false);
 
 	onMount(() => {
 		// Load theme from localStorage or use system preference
@@ -41,11 +33,16 @@
 		mobileMenuOpen = false;
 	}
 
-	function isActive(href: string, pathname: string): boolean {
-		if (href === '/') {
-			return pathname === '/';
-		}
-		return pathname.startsWith(href);
+	function closeDropdown() {
+		dropdownOpen = false;
+	}
+
+	function isToolActive(toolId: string, pathname: string): boolean {
+		return pathname.startsWith(`/${toolId}`);
+	}
+
+	function isAnyToolActive(pathname: string): boolean {
+		return tools.some((tool) => pathname.startsWith(`/${tool.id}`));
 	}
 </script>
 
@@ -61,19 +58,41 @@
 
 		<!-- Desktop Navigation -->
 		<div class="hidden md:flex flex-none">
-			<ul class="menu menu-horizontal px-1 gap-1">
-				{#each navLinks as link}
-					<li>
-						<a
-							href={link.href}
-							class={isActive(link.href, $page.url.pathname) ? 'active' : ''}
-							aria-current={isActive(link.href, $page.url.pathname) ? 'page' : undefined}
-						>
-							{link.label}
-						</a>
-					</li>
-				{/each}
-			</ul>
+			<!-- Tools Dropdown -->
+			<div class="dropdown dropdown-end">
+				<button
+					tabindex="0"
+					class="btn btn-ghost gap-1"
+					class:text-primary={isAnyToolActive($page.url.pathname)}
+					aria-haspopup="true"
+					aria-expanded={dropdownOpen}
+					onclick={() => (dropdownOpen = !dropdownOpen)}
+				>
+					Tools
+					<ChevronDown class="h-4 w-4" />
+				</button>
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<ul
+					tabindex="0"
+					class="dropdown-content menu bg-base-200 rounded-box z-50 w-56 p-2 shadow-lg mt-2"
+				>
+					{#each tools as tool}
+						{@const Icon = tool.icon}
+						{@const href = getToolHref(tool)}
+						<li>
+							<a
+								{href}
+								class={isToolActive(tool.id, $page.url.pathname) ? 'active' : ''}
+								aria-current={isToolActive(tool.id, $page.url.pathname) ? 'page' : undefined}
+								onclick={closeDropdown}
+							>
+								<Icon class="h-4 w-4" />
+								{tool.label}
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</div>
 		</div>
 
 		<!-- Theme Toggle -->
@@ -164,15 +183,18 @@
 	{#if mobileMenuOpen}
 		<div class="absolute top-full left-0 right-0 bg-base-200 shadow-lg md:hidden">
 			<ul class="menu menu-vertical px-4 py-2">
-				{#each navLinks as link}
+				{#each tools as tool}
+					{@const Icon = tool.icon}
+					{@const href = getToolHref(tool)}
 					<li>
 						<a
-							href={link.href}
-							class={isActive(link.href, $page.url.pathname) ? 'active' : ''}
-							aria-current={isActive(link.href, $page.url.pathname) ? 'page' : undefined}
+							{href}
+							class={isToolActive(tool.id, $page.url.pathname) ? 'active' : ''}
+							aria-current={isToolActive(tool.id, $page.url.pathname) ? 'page' : undefined}
 							onclick={closeMobileMenu}
 						>
-							{link.label}
+							<Icon class="h-4 w-4" />
+							{tool.label}
 						</a>
 					</li>
 				{/each}
