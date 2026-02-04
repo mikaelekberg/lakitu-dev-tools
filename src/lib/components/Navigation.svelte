@@ -11,7 +11,8 @@
 		{ href: '/base64', label: 'Base64' },
 		{ href: '/json', label: 'JSON' },
 		{ href: '/jwt', label: 'JWT' },
-		{ href: '/uuid', label: 'UUID' }
+		{ href: '/uuid', label: 'UUID' },
+		{ href: '/cron', label: 'Cron' }
 	];
 
 	onMount(() => {

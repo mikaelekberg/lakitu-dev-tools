@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ToolCard from '$lib/components/ToolCard.svelte';
-	import { FileKey, Braces, KeyRound, Fingerprint } from 'lucide-svelte';
+	import { FileKey, Braces, KeyRound, Fingerprint, Clock } from 'lucide-svelte';
 
 	const tools = [
 		{
@@ -29,6 +29,13 @@
 				'Generate UUID v4, UUID v7, or ULID unique identifiers with customizable formats.',
 			href: '/uuid',
 			icon: Fingerprint
+		},
+		{
+			title: 'Cron Expression Parser',
+			description:
+				'Parse, validate, and build cron expressions with human-readable explanations and next run times.',
+			href: '/cron',
+			icon: Clock
 		}
 	];
 </script>
