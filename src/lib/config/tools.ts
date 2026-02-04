@@ -1,13 +1,14 @@
-import type { Component } from 'svelte';
 import { FileKey, Braces, KeyRound, Fingerprint, Clock, Regex } from 'lucide-svelte';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type IconComponent = any;
 
 export interface Tool {
 	id: string;
 	label: string;
 	title: string;
 	description: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	icon: Component<any>;
+	icon: IconComponent;
 }
 
 export const tools: Tool[] = [
