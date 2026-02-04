@@ -9,7 +9,8 @@
 	const navLinks = [
 		{ href: '/', label: 'Home' },
 		{ href: '/base64', label: 'Base64' },
-		{ href: '/json', label: 'JSON' }
+		{ href: '/json', label: 'JSON' },
+		{ href: '/jwt', label: 'JWT' }
 	];
 
 	onMount(() => {

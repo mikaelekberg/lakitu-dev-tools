@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ToolCard from '$lib/components/ToolCard.svelte';
-	import { FileKey, Braces } from 'lucide-svelte';
+	import { FileKey, Braces, KeyRound } from 'lucide-svelte';
 
 	const tools = [
 		{
@@ -14,6 +14,12 @@
 			description: 'Format, validate, and minify JSON with syntax highlighting and error detection.',
 			href: '/json',
 			icon: Braces
+		},
+		{
+			title: 'JWT Decoder/Encoder',
+			description: 'Decode, verify, and create JSON Web Tokens with HS256 signature support.',
+			href: '/jwt',
+			icon: KeyRound
 		}
 	];
 </script>
