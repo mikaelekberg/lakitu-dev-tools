@@ -275,9 +275,7 @@
 			{#if parseResult?.valid && parseResult.description}
 				<fieldset class="fieldset w-full">
 					<legend class="fieldset-legend">Human-Readable Description</legend>
-					<div
-						class="bg-base-200 rounded-lg p-4 text-lg flex items-center justify-between gap-4"
-					>
+					<div class="bg-base-200 rounded-lg p-4 text-lg flex items-center justify-between gap-4">
 						<p class="flex-1">{parseResult.description}</p>
 						<button
 							class="btn btn-sm btn-ghost"
@@ -362,11 +360,7 @@
 
 			<!-- Action Buttons -->
 			<div class="flex flex-wrap gap-3 justify-center">
-				<button
-					class="btn btn-outline"
-					onclick={handleCopyExpression}
-					disabled={!expression}
-				>
+				<button class="btn btn-outline" onclick={handleCopyExpression} disabled={!expression}>
 					{#if copyExpressionSuccess}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"

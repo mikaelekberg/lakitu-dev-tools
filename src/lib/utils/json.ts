@@ -86,7 +86,10 @@ export interface QueryResult {
 /**
  * Token types for query path parsing
  */
-type PathToken = { type: 'property'; key: string } | { type: 'index'; index: number } | { type: 'wildcard' };
+type PathToken =
+	| { type: 'property'; key: string }
+	| { type: 'index'; index: number }
+	| { type: 'wildcard' };
 
 /**
  * Tokenizes a jq-like query path into segments.
@@ -219,7 +222,7 @@ function applyTokens(data: unknown, tokens: PathToken[]): unknown {
 
 /**
  * Queries JSON data using a jq-like path syntax.
- * 
+ *
  * Supported syntax:
  * - `.` or empty: returns entire object
  * - `.key`: property access
@@ -228,7 +231,7 @@ function applyTokens(data: unknown, tokens: PathToken[]): unknown {
  * - `[*]`: wildcard - returns array of results for each element
  * - `.users[0].name`: combined access
  * - `.items[*].id`: get specific property from all array elements
- * 
+ *
  * @param data - The parsed JSON data to query
  * @param path - The query path string
  * @returns QueryResult with success status and data or error
