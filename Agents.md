@@ -30,7 +30,7 @@ Code style (enforced by Prettier):
 
 ## Project Structure
 
-```
+```text
 lakitu-dev-tools/
 ├── src/
 │   ├── routes/
