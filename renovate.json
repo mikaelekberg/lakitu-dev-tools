@@ -1,48 +1,54 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "schedule": ["before 9am on monday"],
-  "timezone": "America/Los_Angeles",
-  "labels": ["dependencies"],
-  "prHourlyLimit": 5,
-  "prConcurrentLimit": 10,
-  "packageRules": [
-    {
-      "description": "Auto-merge patch updates when CI passes",
-      "matchUpdateTypes": ["patch"],
-      "automerge": true,
-      "automergeType": "pr"
-    },
-    {
-      "description": "Group Svelte ecosystem packages",
-      "groupName": "Svelte ecosystem",
-      "matchPackagePatterns": ["svelte", "@sveltejs/*"]
-    },
-    {
-      "description": "Group TailwindCSS ecosystem packages",
-      "groupName": "TailwindCSS ecosystem",
-      "matchPackagePatterns": ["tailwindcss", "@tailwindcss/*", "daisyui", "autoprefixer", "postcss"]
-    },
-    {
-      "description": "Group linting and formatting packages",
-      "groupName": "Linting and formatting",
-      "matchPackagePatterns": ["eslint", "prettier", "typescript-eslint"]
-    },
-    {
-      "description": "Group TypeScript packages",
-      "groupName": "TypeScript",
-      "matchPackagePatterns": ["typescript", "@types/*"]
-    },
-    {
-      "description": "Group font packages",
-      "groupName": "Fonts",
-      "matchPackagePatterns": ["@fontsource*"]
-    },
-    {
-      "description": "Do not automerge major updates",
-      "matchUpdateTypes": ["major"],
-      "automerge": false,
-      "labels": ["dependencies", "breaking-change"]
-    }
-  ]
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended"],
+	"schedule": ["before 9am on monday"],
+	"timezone": "America/Los_Angeles",
+	"labels": ["dependencies"],
+	"prHourlyLimit": 5,
+	"prConcurrentLimit": 10,
+	"packageRules": [
+		{
+			"description": "Auto-merge patch updates when CI passes",
+			"matchUpdateTypes": ["patch"],
+			"automerge": true,
+			"automergeType": "pr"
+		},
+		{
+			"description": "Group Svelte ecosystem packages",
+			"groupName": "Svelte ecosystem",
+			"matchPackagePatterns": ["svelte", "@sveltejs/*"]
+		},
+		{
+			"description": "Group TailwindCSS ecosystem packages",
+			"groupName": "TailwindCSS ecosystem",
+			"matchPackagePatterns": [
+				"tailwindcss",
+				"@tailwindcss/*",
+				"daisyui",
+				"autoprefixer",
+				"postcss"
+			]
+		},
+		{
+			"description": "Group linting and formatting packages",
+			"groupName": "Linting and formatting",
+			"matchPackagePatterns": ["eslint", "prettier", "typescript-eslint"]
+		},
+		{
+			"description": "Group TypeScript packages",
+			"groupName": "TypeScript",
+			"matchPackagePatterns": ["typescript", "@types/*"]
+		},
+		{
+			"description": "Group font packages",
+			"groupName": "Fonts",
+			"matchPackagePatterns": ["@fontsource*"]
+		},
+		{
+			"description": "Do not automerge major updates",
+			"matchUpdateTypes": ["major"],
+			"automerge": false,
+			"labels": ["dependencies", "breaking-change"]
+		}
+	]
 }

@@ -121,13 +121,9 @@
 	}
 
 	// Computed values
-	let detectedUnit = $derived(
-		timestampInput ? detectTimestampUnit(Number(timestampInput)) : null
-	);
+	let detectedUnit = $derived(timestampInput ? detectTimestampUnit(Number(timestampInput)) : null);
 	let timestampSeconds = $derived(resultDate ? dateToTimestampSeconds(resultDate) : null);
-	let timestampMilliseconds = $derived(
-		resultDate ? dateToTimestampMilliseconds(resultDate) : null
-	);
+	let timestampMilliseconds = $derived(resultDate ? dateToTimestampMilliseconds(resultDate) : null);
 	let iso8601 = $derived(resultDate ? formatISO8601(resultDate, 'UTC') : null);
 	let rfc2822 = $derived(resultDate ? formatRFC2822(resultDate, selectedTimezone) : null);
 	let localFormat = $derived(resultDate ? formatLocal(resultDate, selectedTimezone) : null);
@@ -410,8 +406,8 @@
 		<h2 class="text-xl font-semibold mb-4">About Unix Time</h2>
 		<p class="text-base-content/70">
 			Unix time (also known as POSIX time or Epoch time) is a system for describing points in time,
-			defined as the number of seconds that have elapsed since 00:00:00 UTC on January 1, 1970
-			(the Unix epoch), not counting leap seconds.
+			defined as the number of seconds that have elapsed since 00:00:00 UTC on January 1, 1970 (the
+			Unix epoch), not counting leap seconds.
 		</p>
 
 		<h3 class="text-lg font-semibold mt-4 mb-2">Quick Reference</h3>

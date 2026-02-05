@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Run audit and capture output
           if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
             echo "No high or critical vulnerabilities found." >> $GITHUB_STEP_SUMMARY

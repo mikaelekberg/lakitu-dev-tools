@@ -22,7 +22,10 @@ export const SPECIAL_STRINGS: Record<string, { expression: string; description: 
 	'@weekly': { expression: '0 0 * * 0', description: 'Run once a week at midnight on Sunday' },
 	'@daily': { expression: '0 0 * * *', description: 'Run once a day at midnight' },
 	'@midnight': { expression: '0 0 * * *', description: 'Run once a day at midnight' },
-	'@hourly': { expression: '0 * * * *', description: 'Run once an hour at the beginning of the hour' },
+	'@hourly': {
+		expression: '0 * * * *',
+		description: 'Run once an hour at the beginning of the hour'
+	},
 	'@reboot': { expression: '', description: 'Run once at startup (not schedulable)' }
 };
 
@@ -171,9 +174,7 @@ export function getCronDescription(expression: string): string {
 
 		return cronstrue.toString(trimmed, options);
 	} catch (error) {
-		throw new Error(
-			error instanceof Error ? error.message : 'Failed to parse cron expression'
-		);
+		throw new Error(error instanceof Error ? error.message : 'Failed to parse cron expression');
 	}
 }
 
@@ -226,9 +227,7 @@ function getNextRunsFromExpression(expression: string, count: number, format: Cr
 
 		return runs;
 	} catch (error) {
-		throw new Error(
-			error instanceof Error ? error.message : 'Failed to calculate next run times'
-		);
+		throw new Error(error instanceof Error ? error.message : 'Failed to calculate next run times');
 	}
 }
 

@@ -16,7 +16,8 @@ export const tools: Tool[] = [
 		id: 'base64',
 		label: 'Base64',
 		title: 'Base64 Encoder/Decoder',
-		description: 'Encode text to Base64 or decode Base64 back to text. Supports Unicode characters.',
+		description:
+			'Encode text to Base64 or decode Base64 back to text. Supports Unicode characters.',
 		icon: FileKey
 	},
 	{
@@ -37,8 +38,7 @@ export const tools: Tool[] = [
 		id: 'uuid',
 		label: 'UUID',
 		title: 'UUID/GUID Generator',
-		description:
-			'Generate UUID v4, UUID v7, or ULID unique identifiers with customizable formats.',
+		description: 'Generate UUID v4, UUID v7, or ULID unique identifiers with customizable formats.',
 		icon: Fingerprint
 	},
 	{
