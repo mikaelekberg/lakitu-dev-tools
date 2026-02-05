@@ -13,6 +13,21 @@ Create a utility tools website hosted at lakitu.dev, deployed on Cloudflare Page
 - **CI/CD**: GitHub Actions
 - **Repository**: GitHub
 
+## Development Workflow
+
+Before considering any code changes complete, always run:
+
+1. `npm run format` - Format code with Prettier
+2. `npm run lint` - Check for ESLint errors
+3. `npm run check` - Verify TypeScript/Svelte types
+
+Code style (enforced by Prettier):
+
+- Tabs for indentation
+- Single quotes
+- No trailing commas
+- 100 character line width
+
 ## Project Structure
 
 ```
