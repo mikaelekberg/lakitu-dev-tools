@@ -188,52 +188,101 @@
 			<legend class="fieldset-legend">
 				JSON <span class="font-normal text-base-content/50">{jsonInput.length} characters</span>
 			</legend>
-			<textarea
-				id="json-input"
-				class="textarea textarea-bordered h-96 font-mono text-sm w-full"
-				placeholder={'Enter JSON here, e.g. {"key": "value"}'}
-				bind:value={jsonInput}
-				oninput={() => {
-					highlightedJson = '';
-				}}
-			></textarea>
-			<div class="mt-2 flex gap-2">
-				<button class="btn btn-sm btn-outline" onclick={handleCopyJson} disabled={!jsonInput}>
-					{#if copyJsonSuccess}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4 text-success"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M5 13l4 4L19 7"
-							/>
-						</svg>
-						Copied!
-					{:else}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-							/>
-						</svg>
-						Copy JSON
-					{/if}
-				</button>
-			</div>
+			{#if highlightedJson}
+				<pre
+					class="h-96 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
+						class="language-json">{@html highlightedJson}</code
+					></pre>
+				<div class="mt-2 flex gap-2">
+					<button
+						class="btn btn-sm btn-ghost"
+						onclick={() => {
+							highlightedJson = '';
+						}}
+					>
+						Edit
+					</button>
+					<button class="btn btn-sm btn-outline" onclick={handleCopyJson} disabled={!jsonInput}>
+						{#if copyJsonSuccess}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 text-success"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 13l4 4L19 7"
+								/>
+							</svg>
+							Copied!
+						{:else}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+								/>
+							</svg>
+							Copy JSON
+						{/if}
+					</button>
+				</div>
+			{:else}
+				<textarea
+					id="json-input"
+					class="textarea textarea-bordered h-96 font-mono text-sm w-full"
+					placeholder={'Enter JSON here, e.g. {"key": "value"}'}
+					bind:value={jsonInput}
+				></textarea>
+				<div class="mt-2 flex gap-2">
+					<button class="btn btn-sm btn-outline" onclick={handleCopyJson} disabled={!jsonInput}>
+						{#if copyJsonSuccess}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 text-success"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 13l4 4L19 7"
+								/>
+							</svg>
+							Copied!
+						{:else}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+								/>
+							</svg>
+							Copy JSON
+						{/if}
+					</button>
+				</div>
+			{/if}
 		</fieldset>
 
 		<!-- YAML Section -->
@@ -241,52 +290,101 @@
 			<legend class="fieldset-legend">
 				YAML <span class="font-normal text-base-content/50">{yamlInput.length} characters</span>
 			</legend>
-			<textarea
-				id="yaml-input"
-				class="textarea textarea-bordered h-96 font-mono text-sm w-full"
-				placeholder="Enter YAML here, e.g. key: value"
-				bind:value={yamlInput}
-				oninput={() => {
-					highlightedYaml = '';
-				}}
-			></textarea>
-			<div class="mt-2 flex gap-2">
-				<button class="btn btn-sm btn-outline" onclick={handleCopyYaml} disabled={!yamlInput}>
-					{#if copyYamlSuccess}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4 text-success"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M5 13l4 4L19 7"
-							/>
-						</svg>
-						Copied!
-					{:else}
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-4 w-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-							/>
-						</svg>
-						Copy YAML
-					{/if}
-				</button>
-			</div>
+			{#if highlightedYaml}
+				<pre
+					class="h-96 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
+						class="language-yaml">{@html highlightedYaml}</code
+					></pre>
+				<div class="mt-2 flex gap-2">
+					<button
+						class="btn btn-sm btn-ghost"
+						onclick={() => {
+							highlightedYaml = '';
+						}}
+					>
+						Edit
+					</button>
+					<button class="btn btn-sm btn-outline" onclick={handleCopyYaml} disabled={!yamlInput}>
+						{#if copyYamlSuccess}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 text-success"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 13l4 4L19 7"
+								/>
+							</svg>
+							Copied!
+						{:else}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+								/>
+							</svg>
+							Copy YAML
+						{/if}
+					</button>
+				</div>
+			{:else}
+				<textarea
+					id="yaml-input"
+					class="textarea textarea-bordered h-96 font-mono text-sm w-full"
+					placeholder="Enter YAML here, e.g. key: value"
+					bind:value={yamlInput}
+				></textarea>
+				<div class="mt-2 flex gap-2">
+					<button class="btn btn-sm btn-outline" onclick={handleCopyYaml} disabled={!yamlInput}>
+						{#if copyYamlSuccess}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4 text-success"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 13l4 4L19 7"
+								/>
+							</svg>
+							Copied!
+						{:else}
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+								/>
+							</svg>
+							Copy YAML
+						{/if}
+					</button>
+				</div>
+			{/if}
 		</fieldset>
 	</div>
 

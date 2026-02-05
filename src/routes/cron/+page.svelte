@@ -1,7 +1,6 @@
 <script lang="ts">
 	import {
 		parseCronExpression,
-		detectCronFormat,
 		buildCronExpression,
 		getDefaultFieldValues,
 		formatNextRunDate,

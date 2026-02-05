@@ -542,10 +542,6 @@
 				<fieldset class="fieldset w-full">
 					<legend class="fieldset-legend">Header</legend>
 					<div class="relative">
-						<!-- Safe to use {@html} here because:
-							 1. decodedJWT.header is parsed JSON object
-							 2. JSON.stringify escapes special characters
-							 3. Prism.highlight only wraps tokens in <span> elements -->
 						<pre
 							class="h-160 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
 								class="language-json">{@html headerHighlighted}</code
@@ -594,10 +590,6 @@
 				<fieldset class="fieldset w-full">
 					<legend class="fieldset-legend">Payload</legend>
 					<div class="relative">
-						<!-- Safe to use {@html} here because:
-							 1. decodedJWT.payload is parsed JSON object
-							 2. JSON.stringify escapes special characters
-							 3. Prism.highlight only wraps tokens in <span> elements -->
 						<pre
 							class="h-160 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
 								class="language-json">{@html payloadHighlighted}</code
