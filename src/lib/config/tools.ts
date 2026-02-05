@@ -1,4 +1,4 @@
-import { FileKey, Braces, KeyRound, Fingerprint, Clock, Regex } from 'lucide-svelte';
+import { FileKey, Braces, KeyRound, Fingerprint, Clock, Regex, Timer } from 'lucide-svelte';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type IconComponent = any;
@@ -56,6 +56,14 @@ export const tools: Tool[] = [
 		description:
 			'Test regular expressions with real-time matching, capture group highlighting, and common patterns library.',
 		icon: Regex
+	},
+	{
+		id: 'unix-time',
+		label: 'Unix Time',
+		title: 'Unix Time Converter',
+		description:
+			'Convert Unix timestamps to human-readable dates and vice versa. Supports seconds, milliseconds, and multiple timezones.',
+		icon: Timer
 	}
 ];
 
