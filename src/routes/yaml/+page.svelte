@@ -198,11 +198,7 @@
 				}}
 			></textarea>
 			<div class="mt-2 flex gap-2">
-				<button
-					class="btn btn-sm btn-outline"
-					onclick={handleCopyJson}
-					disabled={!jsonInput}
-				>
+				<button class="btn btn-sm btn-outline" onclick={handleCopyJson} disabled={!jsonInput}>
 					{#if copyJsonSuccess}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -255,11 +251,7 @@
 				}}
 			></textarea>
 			<div class="mt-2 flex gap-2">
-				<button
-					class="btn btn-sm btn-outline"
-					onclick={handleCopyYaml}
-					disabled={!yamlInput}
-				>
+				<button class="btn btn-sm btn-outline" onclick={handleCopyYaml} disabled={!yamlInput}>
 					{#if copyYamlSuccess}
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
@@ -368,9 +360,7 @@
 			<span class="text-sm">Sort keys</span>
 		</label>
 
-		<button class="btn btn-sm btn-ghost" onclick={loadSample}>
-			Load sample
-		</button>
+		<button class="btn btn-sm btn-ghost" onclick={loadSample}> Load sample </button>
 	</div>
 
 	<!-- Info Section -->

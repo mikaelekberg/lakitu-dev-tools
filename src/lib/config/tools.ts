@@ -78,8 +78,7 @@ export const tools: Tool[] = [
 		id: 'yaml',
 		label: 'YAML',
 		title: 'JSON to YAML Converter',
-		description:
-			'Convert between JSON and YAML formats with syntax highlighting and validation.',
+		description: 'Convert between JSON and YAML formats with syntax highlighting and validation.',
 		icon: FileCode2
 	}
 ];

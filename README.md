@@ -60,7 +60,7 @@ npm run build
 
 ## Project Structure
 
-```
+```text
 src/
 ├── routes/
 │   ├── +page.svelte          # Landing page
