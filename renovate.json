@@ -16,27 +16,33 @@
     {
       "description": "Group Svelte ecosystem packages",
       "groupName": "Svelte ecosystem",
-      "matchPackagePatterns": ["svelte", "@sveltejs/*"]
+      "matchPackageNames": ["/svelte/", "/@sveltejs/*/"]
     },
     {
       "description": "Group TailwindCSS ecosystem packages",
       "groupName": "TailwindCSS ecosystem",
-      "matchPackagePatterns": ["tailwindcss", "@tailwindcss/*", "daisyui", "autoprefixer", "postcss"]
+      "matchPackageNames": [
+        "/tailwindcss/",
+        "/@tailwindcss/*/",
+        "/daisyui/",
+        "/autoprefixer/",
+        "/postcss/"
+      ]
     },
     {
       "description": "Group linting and formatting packages",
       "groupName": "Linting and formatting",
-      "matchPackagePatterns": ["eslint", "prettier", "typescript-eslint"]
+      "matchPackageNames": ["/eslint/", "/prettier/", "/typescript-eslint/"]
     },
     {
       "description": "Group TypeScript packages",
       "groupName": "TypeScript",
-      "matchPackagePatterns": ["typescript", "@types/*"]
+      "matchPackageNames": ["/typescript/", "/@types/*/"]
     },
     {
       "description": "Group font packages",
       "groupName": "Fonts",
-      "matchPackagePatterns": ["@fontsource*"]
+      "matchPackageNames": ["/@fontsource*/"]
     },
     {
       "description": "Do not automerge major updates",
