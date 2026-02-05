@@ -1,0 +1,66 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Run every Monday at 9am UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: audit
+        run: |
+          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Run audit and capture output
+          if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
+            echo "No high or critical vulnerabilities found." >> $GITHUB_STEP_SUMMARY
+            echo "audit_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "### Vulnerabilities Detected" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "audit_status=fail" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate audit JSON report
+        if: always()
+        run: npm audit --json > audit-report.json || true
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-report
+          path: audit-report.json
+          retention-days: 30
+
+      - name: Fail on high/critical vulnerabilities
+        if: steps.audit.outputs.audit_status == 'fail'
+        run: |
+          echo "::error::High or critical vulnerabilities detected! Please review and update affected packages."
+          exit 1
