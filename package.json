@@ -41,6 +41,7 @@
 		"@fontsource-variable/jetbrains-mono": "^5.2.8",
 		"cron-parser": "^5.5.0",
 		"cronstrue": "^3.11.0",
-		"lucide-svelte": "^0.563.0"
+		"lucide-svelte": "^0.563.0",
+		"yaml": "^2.8.2"
 	}
 }

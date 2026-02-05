@@ -1,4 +1,13 @@
-import { FileKey, Braces, KeyRound, Fingerprint, Clock, Regex, Timer } from 'lucide-svelte';
+import {
+	FileKey,
+	Braces,
+	KeyRound,
+	Fingerprint,
+	Clock,
+	Regex,
+	Timer,
+	FileCode2
+} from 'lucide-svelte';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type IconComponent = any;
@@ -64,6 +73,14 @@ export const tools: Tool[] = [
 		description:
 			'Convert Unix timestamps to human-readable dates and vice versa. Supports seconds, milliseconds, and multiple timezones.',
 		icon: Timer
+	},
+	{
+		id: 'yaml',
+		label: 'YAML',
+		title: 'JSON to YAML Converter',
+		description:
+			'Convert between JSON and YAML formats with syntax highlighting and validation.',
+		icon: FileCode2
 	}
 ];
 
