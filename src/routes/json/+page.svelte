@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { validateJSON, formatJSON, minifyJSON } from '$lib/utils/json';
+	import { validateJSON, formatJSON, minifyJSON, queryJSON } from '$lib/utils/json';
 	import { copyToClipboard } from '$lib/utils/clipboard';
 	import Prism from 'prismjs';
 	import 'prismjs/components/prism-json';
@@ -13,6 +13,39 @@
 	let indentSize = $state(2);
 	let copySuccess = $state(false);
 	let isValid = $state<boolean | null>(null);
+	let queryPath = $state('');
+	let queryError = $state('');
+	let showQueryHelp = $state(false);
+
+	// Live filtering effect - runs whenever input or queryPath changes
+	$effect(() => {
+		// Only run live query if we have both input and a query path
+		if (input.trim() && queryPath.trim()) {
+			try {
+				const parsed = JSON.parse(input);
+				const result = queryJSON(parsed, queryPath);
+				if (result.success) {
+					output = JSON.stringify(result.data, null, indentSize);
+					queryError = '';
+					isValid = true;
+					error = '';
+					errorLine = undefined;
+					errorColumn = undefined;
+					updateHighlighting();
+				} else {
+					queryError = result.error || 'Invalid query';
+					output = '';
+					highlightedOutput = '';
+				}
+			} catch {
+				// Input is not valid JSON - don't show query error, let validation handle it
+				queryError = '';
+			}
+		} else if (queryPath.trim() === '' && input.trim()) {
+			// Query cleared but input exists - clear query error
+			queryError = '';
+		}
+	});
 
 	function updateHighlighting() {
 		if (output && typeof Prism !== 'undefined') {
@@ -113,6 +146,8 @@
 		errorColumn = undefined;
 		isValid = null;
 		copySuccess = false;
+		queryPath = '';
+		queryError = '';
 	}
 
 	function handleUseOutput() {
@@ -149,7 +184,7 @@
 	<title>JSON Formatter/Validator - Lakitu.dev</title>
 	<meta
 		name="description"
-		content="Free online JSON formatter, validator, and minifier with syntax highlighting. Validate JSON and get detailed error messages."
+		content="Free online JSON formatter, validator, and minifier with syntax highlighting. Query JSON with jq-like syntax and get detailed error messages."
 	/>
 </svelte:head>
 
@@ -157,7 +192,7 @@
 	<header class="mb-8">
 		<h1 class="text-3xl font-bold mb-2">JSON Formatter/Validator</h1>
 		<p class="text-base-content/70">
-			Format, validate, and minify JSON with syntax highlighting and detailed error messages.
+			Format, validate, query, and minify JSON with syntax highlighting and detailed error messages.
 		</p>
 	</header>
 
@@ -252,7 +287,7 @@
 			>
 			<textarea
 				id="json-input"
-				class="textarea textarea-bordered h-120 font-mono text-sm w-full"
+				class="textarea textarea-bordered h-130 font-mono text-sm w-full"
 				placeholder={'Enter JSON here, e.g. {"key": "value"}'}
 				bind:value={input}
 			></textarea>
@@ -275,13 +310,13 @@
 						 3. Prism.highlight() only wraps tokens in <span> elements
 						 Invalid/malicious input fails at JSON.parse() before reaching here -->
 					<pre
-						class="h-80 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
+						class="h-130 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
 							class="language-json">{@html highlightedOutput}</code
 						></pre>
 				{:else}
 					<textarea
 						id="json-output"
-						class="textarea textarea-bordered h-120 font-mono text-sm bg-base-200 w-full"
+						class="textarea textarea-bordered h-130 font-mono text-sm bg-base-200 w-full"
 						placeholder="Formatted JSON will appear here..."
 						readonly
 						value={output}
@@ -300,6 +335,61 @@
 				<option value={4}>4 spaces</option>
 			</select>
 		</label>
+
+		<!-- Query input -->
+		<label class="input input-bordered flex items-center gap-2">
+			<span class="text-sm text-base-content/70">Query:</span>
+			<input
+				type="text"
+				bind:value={queryPath}
+				placeholder=".users[0].name"
+				class="grow w-40 bg-transparent focus:outline-none"
+			/>
+			{#if queryPath}
+				<button
+					class="btn btn-xs btn-ghost btn-circle"
+					onclick={() => {
+						queryPath = '';
+						queryError = '';
+						output = '';
+						highlightedOutput = '';
+					}}
+					aria-label="Clear query"
+				>
+					&times;
+				</button>
+			{/if}
+		</label>
+
+		<!-- Query help dropdown -->
+		<div class="dropdown dropdown-hover dropdown-bottom dropdown-end">
+			<button class="btn btn-xs btn-ghost btn-circle" aria-label="Query syntax help">?</button>
+			<div
+				class="dropdown-content z-50 card card-compact w-72 p-2 shadow-lg bg-base-100 border border-base-300"
+			>
+				<div class="card-body">
+					<h3 class="font-bold text-sm">Query Syntax</h3>
+					<div class="text-xs font-mono space-y-1">
+						<p><code class="bg-base-200 px-1 rounded">.</code> Root object</p>
+						<p><code class="bg-base-200 px-1 rounded">.key</code> Property access</p>
+						<p><code class="bg-base-200 px-1 rounded">.a.b.c</code> Nested properties</p>
+						<p><code class="bg-base-200 px-1 rounded">[0]</code> Array index</p>
+						<p><code class="bg-base-200 px-1 rounded">[*]</code> All array elements</p>
+					</div>
+					<h4 class="font-semibold text-xs mt-2">Examples</h4>
+					<div class="text-xs font-mono space-y-1 text-base-content/70">
+						<p><code>.users[0].name</code></p>
+						<p><code>.items[*].id</code></p>
+						<p><code>.config.settings</code></p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Query error display -->
+		{#if queryError}
+			<span class="text-sm text-error">{queryError}</span>
+		{/if}
 	</div>
 
 	<!-- Action Buttons -->
@@ -439,6 +529,8 @@
 			<li>Format/prettify JSON with customizable indentation (2 or 4 spaces)</li>
 			<li>Minify JSON by removing all unnecessary whitespace</li>
 			<li>Validate JSON with detailed error messages including line and column numbers</li>
+			<li>Query JSON with jq-like syntax (.key, [0], [*] wildcards)</li>
+			<li>Live filtering - results update as you type your query</li>
 			<li>Syntax highlighting for easy reading</li>
 			<li>Client-side processing - your data never leaves your browser</li>
 		</ul>
