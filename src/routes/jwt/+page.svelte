@@ -537,13 +537,13 @@
 			</div>
 
 			<!-- Header and Payload -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<div class="flex flex-col gap-6">
 				<!-- Header -->
-				<fieldset class="fieldset w-full">
+				<fieldset class="fieldset w-full min-w-0">
 					<legend class="fieldset-legend">Header</legend>
 					<div class="relative">
 						<pre
-							class="h-160 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
+							class="overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm whitespace-pre-wrap break-all"><code
 								class="language-json">{@html headerHighlighted}</code
 							></pre>
 						<button
@@ -587,11 +587,11 @@
 				</fieldset>
 
 				<!-- Payload -->
-				<fieldset class="fieldset w-full">
+				<fieldset class="fieldset w-full min-w-0">
 					<legend class="fieldset-legend">Payload</legend>
 					<div class="relative">
 						<pre
-							class="h-160 overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm"><code
+							class="overflow-auto rounded-lg border border-base-300 bg-base-200 p-4 font-mono text-sm whitespace-pre-wrap break-all"><code
 								class="language-json">{@html payloadHighlighted}</code
 							></pre>
 						<button
