@@ -273,6 +273,7 @@ export function getTimezoneOffset(date: Date, timezone: string): string {
 		timeZoneName: 'shortOffset'
 	};
 	const formatted = new Intl.DateTimeFormat('en-US', options).format(date);
+	// eslint-disable-next-line security/detect-unsafe-regex -- Safe: bounded quantifiers, no backtracking risk
 	const match = formatted.match(/GMT([+-]\d{1,2}(?::\d{2})?)/);
 	if (match) {
 		const offset = match[1];
