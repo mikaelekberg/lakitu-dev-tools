@@ -170,6 +170,7 @@ export function validatePattern(pattern: string): ValidationResult {
 	}
 
 	try {
+		// eslint-disable-next-line security/detect-non-literal-regexp -- Intentional: this is a regex testing tool
 		new RegExp(pattern);
 		return { valid: true };
 	} catch (e) {
@@ -195,6 +196,7 @@ export function testRegex(pattern: string, flags: string, input: string): RegexR
 	}
 
 	try {
+		// eslint-disable-next-line security/detect-non-literal-regexp -- Intentional: this is a regex testing tool
 		const regex = new RegExp(pattern, flags);
 		const matches: RegexMatch[] = [];
 
