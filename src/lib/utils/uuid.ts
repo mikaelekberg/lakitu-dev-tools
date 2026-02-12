@@ -8,6 +8,19 @@
  */
 
 export type UUIDType = 'uuidv4' | 'uuidv7' | 'ulid';
+export type DetectedIDType = 'uuidv4' | 'uuidv7' | 'ulid' | 'invalid';
+
+export interface TimestampExtractionResult {
+	valid: boolean;
+	type?: 'uuidv7' | 'ulid';
+	timestampMs?: number;
+	timestampSec?: number;
+	date?: Date;
+	iso8601?: string;
+	localString?: string;
+	relativeTime?: string;
+	error?: string;
+}
 
 export interface FormatOptions {
 	uppercase: boolean;
@@ -176,4 +189,197 @@ export function generateMultiple(type: UUIDType, count: number, options: FormatO
 	}
 
 	return results;
+}
+
+/**
+ * Detects the type of ID from the input string.
+ * @param input - The ID string to analyze
+ * @returns The detected type: 'uuidv4', 'uuidv7', 'ulid', or 'invalid'
+ */
+export function detectIDType(input: string): DetectedIDType {
+	const trimmed = input.trim();
+
+	// Check for ULID format: exactly 26 characters, Crockford's Base32 only
+	if (trimmed.length === 26) {
+		const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
+		if (ulidRegex.test(trimmed)) {
+			return 'ulid';
+		}
+	}
+
+	// Check for UUID format (with or without hyphens)
+	const uuidWithHyphens = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+	const uuidWithoutHyphens = /^[0-9a-f]{32}$/i;
+
+	let normalizedUUID: string;
+
+	if (uuidWithHyphens.test(trimmed)) {
+		normalizedUUID = trimmed;
+	} else if (uuidWithoutHyphens.test(trimmed)) {
+		// Add hyphens for easier parsing
+		normalizedUUID = `${trimmed.slice(0, 8)}-${trimmed.slice(8, 12)}-${trimmed.slice(12, 16)}-${trimmed.slice(16, 20)}-${trimmed.slice(20, 32)}`;
+	} else {
+		return 'invalid';
+	}
+
+	// Check version nibble (position 14, after the second hyphen)
+	const versionChar = normalizedUUID.charAt(14).toLowerCase();
+
+	if (versionChar === '7') {
+		return 'uuidv7';
+	} else if (versionChar === '4') {
+		return 'uuidv4';
+	}
+
+	// Other UUID versions are treated as invalid for timestamp extraction
+	return 'invalid';
+}
+
+/**
+ * Extracts the timestamp from a UUID v7.
+ * UUID v7 stores the Unix timestamp in milliseconds in the first 48 bits.
+ * @param uuid - The UUID v7 string (with or without hyphens)
+ * @returns The timestamp in milliseconds
+ */
+export function extractUUIDv7Timestamp(uuid: string): number {
+	// Remove hyphens and take first 12 hex characters (48 bits)
+	const hex = uuid.replace(/-/g, '').slice(0, 12);
+	return parseInt(hex, 16);
+}
+
+/**
+ * Extracts the timestamp from a ULID.
+ * ULID stores the Unix timestamp in milliseconds in the first 10 Base32 characters.
+ * @param ulid - The ULID string (26 characters)
+ * @returns The timestamp in milliseconds
+ */
+export function extractULIDTimestamp(ulid: string): number {
+	const timestampChars = ulid.slice(0, 10).toUpperCase();
+	let timestamp = 0;
+
+	for (let i = 0; i < 10; i++) {
+		const char = timestampChars[i];
+		const value = ULID_ENCODING.indexOf(char);
+		if (value === -1) {
+			throw new Error(`Invalid ULID character: ${char}`);
+		}
+		timestamp = timestamp * 32 + value;
+	}
+
+	return timestamp;
+}
+
+/**
+ * Formats a date as a relative time string (e.g., "3 days ago", "in 2 hours").
+ * @param date - The date to format
+ * @returns A human-readable relative time string
+ */
+export function formatRelativeTime(date: Date): string {
+	const now = Date.now();
+	const diffMs = now - date.getTime();
+	const diffSec = Math.floor(Math.abs(diffMs) / 1000);
+	const diffMin = Math.floor(diffSec / 60);
+	const diffHour = Math.floor(diffMin / 60);
+	const diffDay = Math.floor(diffHour / 24);
+	const diffWeek = Math.floor(diffDay / 7);
+	const diffMonth = Math.floor(diffDay / 30);
+	const diffYear = Math.floor(diffDay / 365);
+
+	const isFuture = diffMs < 0;
+	const prefix = isFuture ? 'in ' : '';
+	const suffix = isFuture ? '' : ' ago';
+
+	if (diffSec < 5) {
+		return 'just now';
+	} else if (diffSec < 60) {
+		return `${prefix}${diffSec} second${diffSec !== 1 ? 's' : ''}${suffix}`;
+	} else if (diffMin < 60) {
+		return `${prefix}${diffMin} minute${diffMin !== 1 ? 's' : ''}${suffix}`;
+	} else if (diffHour < 24) {
+		return `${prefix}${diffHour} hour${diffHour !== 1 ? 's' : ''}${suffix}`;
+	} else if (diffDay < 7) {
+		return `${prefix}${diffDay} day${diffDay !== 1 ? 's' : ''}${suffix}`;
+	} else if (diffWeek < 5) {
+		return `${prefix}${diffWeek} week${diffWeek !== 1 ? 's' : ''}${suffix}`;
+	} else if (diffMonth < 12) {
+		return `${prefix}${diffMonth} month${diffMonth !== 1 ? 's' : ''}${suffix}`;
+	} else {
+		return `${prefix}${diffYear} year${diffYear !== 1 ? 's' : ''}${suffix}`;
+	}
+}
+
+/**
+ * Extracts the embedded timestamp from a UUID v7 or ULID.
+ * Auto-detects the input type and returns detailed timestamp information.
+ * @param input - The UUID v7 or ULID string
+ * @returns Extraction result with timestamp in various formats
+ */
+export function extractTimestamp(input: string): TimestampExtractionResult {
+	const trimmed = input.trim();
+
+	if (!trimmed) {
+		return { valid: false, error: 'Please enter a UUID v7 or ULID.' };
+	}
+
+	const detectedType = detectIDType(trimmed);
+
+	if (detectedType === 'invalid') {
+		return {
+			valid: false,
+			error: 'Invalid input. Please enter a valid UUID v7 or ULID.'
+		};
+	}
+
+	if (detectedType === 'uuidv4') {
+		return {
+			valid: false,
+			error:
+				'UUID v4 does not contain an embedded timestamp. Only UUID v7 and ULID support timestamp extraction.'
+		};
+	}
+
+	try {
+		let timestampMs: number;
+
+		if (detectedType === 'uuidv7') {
+			timestampMs = extractUUIDv7Timestamp(trimmed);
+		} else {
+			timestampMs = extractULIDTimestamp(trimmed);
+		}
+
+		const date = new Date(timestampMs);
+
+		// Validate the timestamp is reasonable (between 1970 and year 10000)
+		if (timestampMs < 0 || timestampMs > 253402300799999) {
+			return {
+				valid: false,
+				error: 'Extracted timestamp is out of valid range.'
+			};
+		}
+
+		return {
+			valid: true,
+			type: detectedType,
+			timestampMs,
+			timestampSec: Math.floor(timestampMs / 1000),
+			date,
+			iso8601: date.toISOString(),
+			localString: date.toLocaleString(undefined, {
+				weekday: 'short',
+				year: 'numeric',
+				month: 'short',
+				day: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit',
+				timeZoneName: 'short'
+			}),
+			relativeTime: formatRelativeTime(date)
+		};
+	} catch (e) {
+		return {
+			valid: false,
+			error: e instanceof Error ? e.message : 'Failed to extract timestamp.'
+		};
+	}
 }
