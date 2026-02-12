@@ -6,7 +6,7 @@
 | ------- | ------------------ |
 | Latest  | :white_check_mark: |
 
-Only the latest deployed version of lakitu.dev receives security updates.
+Only the latest deployed version of tools.lakitu.dev receives security updates.
 
 ## Reporting a Vulnerability
 
@@ -58,7 +58,7 @@ This project implements the following security measures:
 
 This security policy applies to:
 
-- The lakitu.dev website and all its tools
+- The tools.lakitu.dev website and all its tools
 - The source code in this repository
 
 Out of scope:
@@ -67,4 +67,4 @@ Out of scope:
 - Social engineering attacks
 - Denial of service attacks against infrastructure
 
-Thank you for helping keep lakitu.dev secure!
+Thank you for helping keep tools.lakitu.dev secure!
