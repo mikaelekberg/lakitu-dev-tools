@@ -20,7 +20,7 @@
 		"@types/prismjs": "^1.26.0",
 		"autoprefixer": "^10.4.0",
 		"daisyui": "^5.0.0",
-		"eslint": "^9.0.0",
+		"eslint": "^10.0.0",
 		"eslint-config-prettier": "^10.0.0",
 		"eslint-plugin-security": "^3.0.1",
 		"eslint-plugin-svelte": "^3.0.0",
