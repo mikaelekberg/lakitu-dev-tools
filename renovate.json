@@ -57,6 +57,26 @@
 			"matchPackageNames": ["/@fontsource*/"]
 		},
 		{
+			"description": "Group Vite and Svelte major upgrades together",
+			"groupName": "Svelte + Vite major platform upgrade",
+			"matchUpdateTypes": ["major"],
+			"matchPackageNames": [
+				"vite",
+				"@sveltejs/vite-plugin-svelte",
+				"@sveltejs/kit",
+				"@sveltejs/adapter-cloudflare"
+			],
+			"automerge": false,
+			"labels": ["dependencies", "breaking-change"]
+		},
+		{
+			"description": "Keep TypeScript major PRs open but marked blocked",
+			"matchPackageNames": ["typescript"],
+			"matchUpdateTypes": ["major"],
+			"automerge": false,
+			"labels": ["dependencies", "breaking-change", "blocked"]
+		},
+		{
 			"description": "Do not automerge major updates",
 			"matchUpdateTypes": ["major"],
 			"automerge": false,
