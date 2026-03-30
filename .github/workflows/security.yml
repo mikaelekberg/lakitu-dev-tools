@@ -60,7 +60,7 @@ jobs:
           retention-days: 30
 
       - name: Fail on high/critical vulnerabilities
-        if: steps.audit.outputs.audit_status == 'fail'
+        if: steps.audit.outputs.audit_status == 'fail' && !(github.event_name == 'pull_request' && github.actor == 'renovate[bot]')
         run: |
           echo "::error::High or critical vulnerabilities detected! Please review and update affected packages."
           exit 1

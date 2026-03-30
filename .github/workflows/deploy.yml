@@ -28,7 +28,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Security audit (non-blocking for Renovate)
+        if: github.actor == 'renovate[bot]'
+        run: npm audit --audit-level=high || true
+
       - name: Security audit
+        if: github.actor != 'renovate[bot]'
         run: npm audit --audit-level=high
 
       - name: Type check

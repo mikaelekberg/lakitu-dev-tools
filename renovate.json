@@ -6,6 +6,10 @@
 	"labels": ["dependencies"],
 	"prHourlyLimit": 5,
 	"prConcurrentLimit": 10,
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 9am on monday"]
+	},
 	"packageRules": [
 		{
 			"description": "Auto-merge patch updates when CI passes",
