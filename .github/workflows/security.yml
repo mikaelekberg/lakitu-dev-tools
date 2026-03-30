@@ -1,6 +1,11 @@
 name: Security Scan
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
   schedule:
     # Run every Monday at 9am UTC
     - cron: '0 9 * * 1'
@@ -36,7 +41,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Run audit and capture output
-          if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
+          audit_cmd="npm audit --audit-level=high"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            audit_cmd="npm audit --omit=dev --audit-level=high"
+          fi
+
+          if $audit_cmd 2>&1 | tee audit-output.txt; then
             echo "No high or critical vulnerabilities found." >> $GITHUB_STEP_SUMMARY
             echo "audit_status=pass" >> $GITHUB_OUTPUT
           else
@@ -60,7 +70,7 @@ jobs:
           retention-days: 30
 
       - name: Fail on high/critical vulnerabilities
-        if: steps.audit.outputs.audit_status == 'fail' && !(github.event_name == 'pull_request' && github.actor == 'renovate[bot]')
+        if: steps.audit.outputs.audit_status == 'fail' && !(github.event_name == 'pull_request' && github.event.pull_request.user.login == 'renovate[bot]')
         run: |
           echo "::error::High or critical vulnerabilities detected! Please review and update affected packages."
           exit 1
