@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { jsonToYaml, yamlToJson } from '$lib/utils/yaml';
 	import { copyToClipboard } from '$lib/utils/clipboard';
-	import Prism from 'prismjs';
-	import 'prismjs/components/prism-json';
-	import 'prismjs/components/prism-yaml';
+	import { escapeHtml, loadPrism } from '$lib/utils/prism';
 
 	let jsonInput = $state('');
 	let yamlInput = $state('');
@@ -16,21 +14,47 @@
 	let sortKeys = $state(false);
 	let copyJsonSuccess = $state(false);
 	let copyYamlSuccess = $state(false);
+	let jsonHighlightRequest = 0;
+	let yamlHighlightRequest = 0;
 
-	function updateJsonHighlighting() {
-		if (jsonInput && typeof Prism !== 'undefined') {
-			highlightedJson = Prism.highlight(jsonInput, Prism.languages.json, 'json');
-		} else {
+	async function updateJsonHighlighting() {
+		const currentJsonInput = jsonInput;
+
+		if (!currentJsonInput) {
 			highlightedJson = '';
+			return;
 		}
+
+		highlightedJson = escapeHtml(currentJsonInput);
+
+		const requestId = ++jsonHighlightRequest;
+		const prism = await loadPrism(['json']);
+
+		if (requestId !== jsonHighlightRequest || jsonInput !== currentJsonInput || !prism?.languages.json) {
+			return;
+		}
+
+		highlightedJson = prism.highlight(currentJsonInput, prism.languages.json, 'json');
 	}
 
-	function updateYamlHighlighting() {
-		if (yamlInput && typeof Prism !== 'undefined') {
-			highlightedYaml = Prism.highlight(yamlInput, Prism.languages.yaml, 'yaml');
-		} else {
+	async function updateYamlHighlighting() {
+		const currentYamlInput = yamlInput;
+
+		if (!currentYamlInput) {
 			highlightedYaml = '';
+			return;
 		}
+
+		highlightedYaml = escapeHtml(currentYamlInput);
+
+		const requestId = ++yamlHighlightRequest;
+		const prism = await loadPrism(['yaml']);
+
+		if (requestId !== yamlHighlightRequest || yamlInput !== currentYamlInput || !prism?.languages.yaml) {
+			return;
+		}
+
+		highlightedYaml = prism.highlight(currentYamlInput, prism.languages.yaml, 'yaml');
 	}
 
 	function handleJsonToYaml() {
@@ -45,7 +69,7 @@
 
 		if (result.success && result.data) {
 			yamlInput = result.data;
-			updateYamlHighlighting();
+			void updateYamlHighlighting();
 		} else {
 			error = result.error || 'Failed to convert JSON to YAML';
 			errorLine = result.line;
@@ -62,7 +86,7 @@
 
 		if (result.success && result.data) {
 			jsonInput = result.data;
-			updateJsonHighlighting();
+			void updateJsonHighlighting();
 		} else {
 			error = result.error || 'Failed to convert YAML to JSON';
 			errorLine = result.line;
@@ -120,7 +144,7 @@
 			null,
 			indentSize
 		);
-		updateJsonHighlighting();
+		void updateJsonHighlighting();
 		error = '';
 		errorLine = undefined;
 		errorColumn = undefined;

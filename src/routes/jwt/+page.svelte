@@ -10,8 +10,7 @@
 		type JWTValidationResult
 	} from '$lib/utils/jwt';
 	import { copyToClipboard } from '$lib/utils/clipboard';
-	import Prism from 'prismjs';
-	import 'prismjs/components/prism-json';
+	import { escapeHtml, loadPrism } from '$lib/utils/prism';
 
 	// Tab state
 	let activeTab = $state<'decode' | 'encode'>('decode');
@@ -45,15 +44,19 @@
 	let copyHeaderSuccess = $state(false);
 	let copyPayloadSuccess = $state(false);
 	let copyTokenSuccess = $state(false);
+	let decodeHighlightRequest = 0;
 
-	function highlightJSON(json: string): string {
-		if (typeof Prism !== 'undefined') {
-			return Prism.highlight(json, Prism.languages.json, 'json');
+	async function highlightJSON(json: string): Promise<string> {
+		const prism = await loadPrism(['json']);
+
+		if (!prism?.languages.json) {
+			return escapeHtml(json);
 		}
-		return json;
+
+		return prism.highlight(json, prism.languages.json, 'json');
 	}
 
-	function handleDecode() {
+	async function handleDecode() {
 		decodeError = '';
 		decodedJWT = null;
 		validationResult = null;
@@ -68,16 +71,29 @@
 
 		try {
 			const decoded = decodeJWT(tokenInput);
+			const requestId = ++decodeHighlightRequest;
 			decodedJWT = decoded;
 
 			// Format and highlight JSON
 			const headerJson = JSON.stringify(decoded.header, null, 2);
 			const payloadJson = JSON.stringify(decoded.payload, null, 2);
-			headerHighlighted = highlightJSON(headerJson);
-			payloadHighlighted = highlightJSON(payloadJson);
+			headerHighlighted = escapeHtml(headerJson);
+			payloadHighlighted = escapeHtml(payloadJson);
 
 			// Validate claims
 			validationResult = validateJWTClaims(decoded.payload);
+
+			const [highlightedHeader, highlightedPayload] = await Promise.all([
+				highlightJSON(headerJson),
+				highlightJSON(payloadJson)
+			]);
+
+			if (requestId !== decodeHighlightRequest) {
+				return;
+			}
+
+			headerHighlighted = highlightedHeader;
+			payloadHighlighted = highlightedPayload;
 		} catch (e) {
 			decodeError = e instanceof Error ? e.message : 'Failed to decode JWT.';
 		}
@@ -179,6 +195,7 @@
 		decodeError = '';
 		headerHighlighted = '';
 		payloadHighlighted = '';
+		decodeHighlightRequest += 1;
 		verifySecret = '';
 		signatureValid = null;
 		copyHeaderSuccess = false;
@@ -201,7 +218,7 @@
 		// Sample expired token for testing (generated with secret "secret")
 		tokenInput =
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.4Adcj3UFYzPUVaVF43FmMab6RlaQD8A9V8wFzzht-KQ';
-		handleDecode();
+		void handleDecode();
 	}
 </script>
 

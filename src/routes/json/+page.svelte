@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { validateJSON, formatJSON, minifyJSON, queryJSON } from '$lib/utils/json';
 	import { copyToClipboard } from '$lib/utils/clipboard';
-	import Prism from 'prismjs';
-	import 'prismjs/components/prism-json';
+	import { escapeHtml, loadPrism } from '$lib/utils/prism';
 
 	let input = $state('');
 	let output = $state('');
@@ -15,6 +14,7 @@
 	let isValid = $state<boolean | null>(null);
 	let queryPath = $state('');
 	let queryError = $state('');
+	let highlightRequest = 0;
 
 	// Live filtering effect - runs whenever input or queryPath changes
 	$effect(() => {
@@ -30,7 +30,7 @@
 					error = '';
 					errorLine = undefined;
 					errorColumn = undefined;
-					updateHighlighting();
+					void updateHighlighting();
 				} else {
 					queryError = result.error || 'Invalid query';
 					output = '';
@@ -46,12 +46,24 @@
 		}
 	});
 
-	function updateHighlighting() {
-		if (output && typeof Prism !== 'undefined') {
-			highlightedOutput = Prism.highlight(output, Prism.languages.json, 'json');
-		} else {
+	async function updateHighlighting() {
+		const currentOutput = output;
+
+		if (!currentOutput) {
 			highlightedOutput = '';
+			return;
 		}
+
+		highlightedOutput = escapeHtml(currentOutput);
+
+		const requestId = ++highlightRequest;
+		const prism = await loadPrism(['json']);
+
+		if (requestId !== highlightRequest || output !== currentOutput || !prism?.languages.json) {
+			return;
+		}
+
+		highlightedOutput = prism.highlight(currentOutput, prism.languages.json, 'json');
 	}
 
 	function handleValidate() {
@@ -93,7 +105,7 @@
 		try {
 			output = formatJSON(input, indentSize);
 			isValid = true;
-			updateHighlighting();
+			void updateHighlighting();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to format JSON.';
 			isValid = false;
@@ -116,7 +128,7 @@
 		try {
 			output = minifyJSON(input);
 			isValid = true;
-			updateHighlighting();
+			void updateHighlighting();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to minify JSON.';
 			isValid = false;
