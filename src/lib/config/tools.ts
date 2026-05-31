@@ -2,6 +2,7 @@ import {
 	FileKey,
 	Braces,
 	KeyRound,
+	Network,
 	Fingerprint,
 	Clock,
 	Regex,
@@ -65,6 +66,14 @@ export const tools: Tool[] = [
 		description:
 			'Test regular expressions with real-time matching, capture group highlighting, and common patterns library.',
 		icon: Regex
+	},
+	{
+		id: 'subnet',
+		label: 'Subnet',
+		title: 'Visual Subnet Calculator',
+		description:
+			'Calculate subnets from CIDR blocks with a visual partition grid. View network, broadcast, hosts, and usable range for each subnet.',
+		icon: Network
 	},
 	{
 		id: 'unix-time',
