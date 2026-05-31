@@ -44,7 +44,13 @@ export function isValidBase64(input: string): boolean {
 	return base64Regex.test(cleanInput) && cleanInput.length % 4 === 0;
 }
 
-export const SUPPORTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+export const SUPPORTED_IMAGE_TYPES = [
+	'image/png',
+	'image/jpeg',
+	'image/gif',
+	'image/webp',
+	'image/svg+xml'
+];
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export interface ImageEncodeResult {
@@ -66,7 +72,7 @@ export function encodeImageToBase64(file: File): Promise<ImageEncodeResult> {
 				mimeType: file.type,
 				originalSize: file.size,
 				encodedSize: base64.length,
-				dataUri,
+				dataUri
 			});
 		};
 		reader.onerror = () => reject(new Error('Failed to read file.'));

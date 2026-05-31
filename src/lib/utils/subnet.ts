@@ -6,26 +6,26 @@
  */
 
 export interface ParsedCIDR {
-	ip: number;        // IP as 32-bit unsigned int
-	prefix: number;    // prefix length (0-32)
-	netmask: number;   // subnet mask as 32-bit int
-	wildcard: number;  // wildcard mask (inverted netmask)
-	network: number;   // network address
+	ip: number; // IP as 32-bit unsigned int
+	prefix: number; // prefix length (0-32)
+	netmask: number; // subnet mask as 32-bit int
+	wildcard: number; // wildcard mask (inverted netmask)
+	network: number; // network address
 	broadcast: number; // broadcast address
-	hosts: bigint;     // number of usable hosts
-	ipStr: string;     // original IP string
-	cidrStr: string;   // normalized CIDR string
+	hosts: bigint; // number of usable hosts
+	ipStr: string; // original IP string
+	cidrStr: string; // normalized CIDR string
 }
 
 export interface SubnetPartition {
-	cidr: string;        // e.g. "10.0.0.0/24"
+	cidr: string; // e.g. "10.0.0.0/24"
 	networkAddress: string;
 	broadcastAddress: string;
-	usableRange: string;  // e.g. "10.0.1.1 - 10.0.1.254"
+	usableRange: string; // e.g. "10.0.1.1 - 10.0.1.254"
 	totalHosts: number;
 	usableHosts: number;
 	isAllocated: boolean; // user-marked as in-use
-	color: string;        // visual color class
+	color: string; // visual color class
 }
 
 const SUBNET_COLORS = [
@@ -63,7 +63,7 @@ export function ipToString(ip: number): string {
  */
 export function prefixToNetmask(prefix: number): number {
 	if (prefix === 0) return 0;
-	return (~(2 ** (32 - prefix) - 1)) >>> 0;
+	return ~(2 ** (32 - prefix) - 1) >>> 0;
 }
 
 /**
@@ -126,15 +126,10 @@ export function parseCIDR(input: string): ParsedCIDR | null {
 	}
 
 	// Build 32-bit unsigned IP
-	const ip = (
-		(ipOctets[0] << 24) |
-		(ipOctets[1] << 16) |
-		(ipOctets[2] << 8) |
-		ipOctets[3]
-	) >>> 0;
+	const ip = ((ipOctets[0] << 24) | (ipOctets[1] << 16) | (ipOctets[2] << 8) | ipOctets[3]) >>> 0;
 
 	const netmask = prefixToNetmask(prefix);
-	const wildcard = (~netmask) >>> 0;
+	const wildcard = ~netmask >>> 0;
 	const network = (ip & netmask) >>> 0;
 	const broadcast = (network | wildcard) >>> 0;
 	const hosts = BigInt(calculateUsableHosts(prefix));
