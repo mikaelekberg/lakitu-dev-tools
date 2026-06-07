@@ -5,6 +5,7 @@
 		calculateTotalHosts,
 		splitBlock,
 		getColorForNetwork,
+		unsplit,
 		DISPLAY_LIMIT,
 		type ParsedCIDR,
 		type SubnetBlock
@@ -62,29 +63,25 @@
 
 	// Partition tab state
 	let supernetCidr = $state('');
+	let supernetTotalHosts = $state(0);
 	let blocks = $state<SubnetBlock[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
 	let editingNoteIndex = $state<number | null>(null);
 
-	function buildRange(
-		prefix: number,
-		network: number,
-		broadcast: number
-	): {
-		range: string;
-		hosts: number;
-	} {
-		if (prefix === 32) {
-			return { range: ipToString(network), hosts: 1 };
-		}
-		if (prefix === 31) {
-			return { range: `${ipToString(network)} - ${ipToString(broadcast)}`, hosts: 2 };
-		}
-		return {
-			range: `${ipToString(network + 1)} - ${ipToString(broadcast - 1)}`,
-			hosts: 2 ** (32 - prefix) - 2
-		};
+	function barPct(block: SubnetBlock): number {
+		if (supernetTotalHosts === 0) return 0;
+		return (block.totalHosts / supernetTotalHosts) * 100;
+	}
+
+	function canUnmerge(splitFrom: string): boolean {
+		if (!splitFrom) return false;
+		const siblings = blocks.filter((b) => b.splitFrom === splitFrom);
+		if (siblings.length < 2) return false;
+		const parent = parseCIDR(splitFrom);
+		if (!parent) return false;
+		const expected = 2 ** (siblings[0].prefix - parent.prefix);
+		return siblings.length === expected;
 	}
 
 	function handleLoad() {
@@ -105,21 +102,35 @@
 		}
 
 		const blockSize = 2 ** (32 - parsed.prefix);
-		const { range, hosts } = buildRange(parsed.prefix, parsed.network, parsed.broadcast);
+		let usableRange: string;
+		let usableHosts: number;
+		if (parsed.prefix === 32) {
+			usableRange = ipToString(parsed.network);
+			usableHosts = 1;
+		} else if (parsed.prefix === 31) {
+			usableRange = `${ipToString(parsed.network)} - ${ipToString(parsed.broadcast)}`;
+			usableHosts = 2;
+		} else {
+			usableRange = `${ipToString(parsed.network + 1)} - ${ipToString(parsed.broadcast - 1)}`;
+			usableHosts = blockSize - 2;
+		}
 
+		supernetTotalHosts = blockSize;
 		blocks = [
 			{
 				network: parsed.network,
 				cidr: parsed.cidrStr,
 				networkAddress: ipToString(parsed.network),
 				broadcastAddress: ipToString(parsed.broadcast),
-				usableRange: range,
+				usableRange,
 				totalHosts: blockSize,
-				usableHosts: hosts,
+				usableHosts,
 				prefix: parsed.prefix,
 				isAllocated: false,
 				color: getColorForNetwork(parsed.network, parsed.prefix),
-				note: ''
+				note: '',
+				depth: 0,
+				splitFrom: ''
 			}
 		];
 	}
@@ -140,7 +151,13 @@
 			return;
 		}
 
-		const result = splitBlock(parent.network, parent.prefix, targetPrefix);
+		const result = splitBlock(
+			parent.network,
+			parent.prefix,
+			targetPrefix,
+			parent.depth,
+			parent.cidr
+		);
 		if (result.error) {
 			partitionError = result.error;
 			return;
@@ -157,6 +174,24 @@
 
 		blocks = [...blocks.slice(0, index), ...result.blocks, ...blocks.slice(index + 1)];
 		partitionWarning = null;
+	}
+
+	function handleUnmerge(splitFrom: string) {
+		partitionError = null;
+		partitionWarning = null;
+
+		const children = blocks.filter((b) => b.splitFrom === splitFrom);
+		if (children.length === 0) return;
+
+		const parent = unsplit(splitFrom, children);
+		if (!parent) {
+			partitionWarning = 'Cannot unmerge; sibling blocks no longer cover the full parent range.';
+			return;
+		}
+
+		const firstChildIdx = blocks.findIndex((b) => b.splitFrom === splitFrom);
+		const lastChildIdx = blocks.findLastIndex((b) => b.splitFrom === splitFrom);
+		blocks = [...blocks.slice(0, firstChildIdx), parent, ...blocks.slice(lastChildIdx + 1)];
 	}
 
 	function toggleAllocated(index: number) {
@@ -181,6 +216,7 @@
 
 	function handlePartitionClear() {
 		supernetCidr = '';
+		supernetTotalHosts = 0;
 		blocks = [];
 		partitionError = null;
 		partitionWarning = null;
@@ -438,8 +474,8 @@
 					/>
 				</fieldset>
 				<p class="text-xs text-base-content/60 mt-2">
-					Load a supernet, then split any block into smaller subnets. Add a note to any subnet for
-					documentation.
+					Load a supernet, then split any subnet into smaller blocks. Unmerge siblings to combine
+					them back. Add notes to document each subnet.
 				</p>
 				<div class="flex flex-wrap gap-3 mt-4">
 					<button class="btn btn-primary" onclick={handleLoad}>
@@ -533,108 +569,89 @@
 				</span>
 			</div>
 
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+			<!-- Column headers -->
+			<div
+				class="hidden sm:flex items-center gap-3 text-xs text-base-content/50 font-medium px-1 pb-1 border-b border-base-content/10 mb-1"
+			>
+				<div class="w-20 shrink-0">Size</div>
+				<div class="w-40 shrink-0">Subnet</div>
+				<div class="flex-1">Details</div>
+				<div class="w-52 shrink-0 text-right">Actions</div>
+			</div>
+
+			<!-- Block rows -->
+			<div class="flex flex-col gap-px">
 				{#each blocks as block, i (block.cidr + '-' + i)}
 					<div
-						class="card card-compact bg-base-200 transition-colors {block.isAllocated
-							? 'ring-2 ring-primary'
+						class="flex items-center gap-3 px-1 py-2 rounded hover:bg-base-300/40 transition-colors {block.isAllocated
+							? 'ring-2 ring-primary ring-inset'
 							: ''}"
 					>
-						<div class="h-2 rounded-t-box {block.color}"></div>
-						<div class="card-body p-3">
-							<div class="font-mono text-sm font-medium">{block.cidr}</div>
-							<div class="text-xs text-base-content/70">
-								{block.usableHosts.toLocaleString()} usable hosts
-							</div>
-							<div class="text-xs text-base-content/70 truncate">{block.usableRange}</div>
+						<!-- proportional size bar -->
+						<div class="w-20 h-6 bg-base-content/10 rounded overflow-hidden shrink-0">
+							<div
+								class="h-full {block.color} rounded transition-all"
+								style="width: {Math.max(barPct(block), 2)}%"
+							></div>
+						</div>
 
+						<!-- CIDR -->
+						<div class="w-40 shrink-0">
+							<div class="font-mono text-sm font-medium">{block.cidr}</div>
+						</div>
+
+						<!-- details -->
+						<div class="flex-1 min-w-0">
+							<div class="text-xs text-base-content/70 truncate">
+								{block.usableHosts.toLocaleString()} hosts
+								<span class="mx-1">·</span>
+								<span class="font-mono">{block.usableRange}</span>
+							</div>
+							<!-- split from -->
+							<div class="text-xs text-base-content/40 mt-0.5">
+								{#if block.splitFrom}
+									<span class="font-mono">from {block.splitFrom}</span>
+								{:else}
+									<span class="italic">root</span>
+								{/if}
+								{#if block.depth > 0}
+									<span class="ml-1 opacity-50">(depth {block.depth})</span>
+								{/if}
+							</div>
+
+							<!-- note display (when not editing) -->
 							{#if block.note && editingNoteIndex !== i}
 								<div
-									class="text-xs text-base-content/60 mt-1 italic border-l-2 border-base-content/20 pl-2"
+									class="text-xs text-base-content/50 mt-0.5 italic border-l-2 border-base-content/20 pl-2 truncate"
 								>
 									"{block.note}"
 								</div>
 							{/if}
 
+							<!-- note editor -->
 							{#if editingNoteIndex === i}
 								<textarea
-									class="textarea textarea-bordered textarea-xs w-full mt-2"
+									class="textarea textarea-bordered textarea-xs w-full mt-1"
 									rows="2"
 									placeholder="Note for this subnet..."
 									value={block.note}
 									oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
 								></textarea>
 							{/if}
+						</div>
 
-							<div class="flex flex-wrap gap-1 mt-2">
-								{#if block.prefix < 32}
-									<select
-										class="select select-xs select-bordered"
-										aria-label="Split {block.cidr} into a smaller prefix"
-										onchange={(e) => {
-											const v = e.currentTarget.value;
-											const target = parseInt(v, 10);
-											e.currentTarget.value = '';
-											if (!isNaN(target) && target > block.prefix) {
-												handleSplit(i, target);
-											}
-										}}
-									>
-										<option value="">Split to...</option>
-										{#each Array.from({ length: 32 - block.prefix }, (_, k) => block.prefix + 1 + k) as targetPrefix}
-											<option value={targetPrefix}
-												>/{targetPrefix} ({2 ** (32 - targetPrefix)} addrs)</option
-											>
-										{/each}
-									</select>
-								{/if}
+						<!-- actions -->
+						<div class="w-52 shrink-0 flex flex-wrap gap-1 justify-end">
+							{#if canUnmerge(block.splitFrom)}
 								<button
-									class="btn btn-xs btn-ghost"
-									aria-label={editingNoteIndex === i ? 'Close note' : 'Edit note'}
-									onclick={() => (editingNoteIndex = editingNoteIndex === i ? null : i)}
-								>
-									{#if editingNoteIndex === i}
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											class="h-3.5 w-3.5"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M5 13l4 4L19 7"
-											/>
-										</svg>
-									{:else}
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											class="h-3.5 w-3.5"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="2"
-												d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-											/>
-										</svg>
-									{/if}
-								</button>
-								<button
-									class="btn btn-xs btn-ghost"
-									aria-label="Toggle allocated"
-									aria-pressed={block.isAllocated}
-									onclick={() => toggleAllocated(i)}
+									class="btn btn-xs btn-outline btn-warning"
+									onclick={() => handleUnmerge(block.splitFrom)}
+									title="Merge {block.splitFrom} back together"
 								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
-										class="h-3.5 w-3.5"
-										fill={block.isAllocated ? 'currentColor' : 'none'}
+										class="h-3 w-3"
+										fill="none"
 										viewBox="0 0 24 24"
 										stroke="currentColor"
 									>
@@ -642,11 +659,85 @@
 											stroke-linecap="round"
 											stroke-linejoin="round"
 											stroke-width="2"
-											d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+											d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"
 										/>
 									</svg>
 								</button>
-							</div>
+							{/if}
+
+							{#if block.prefix < 32}
+								<select
+									class="select select-xs select-bordered"
+									aria-label="Split {block.cidr}"
+									onchange={(e) => {
+										const v = e.currentTarget.value;
+										const target = parseInt(v, 10);
+										e.currentTarget.value = '';
+										if (!isNaN(target) && target > block.prefix) {
+											handleSplit(i, target);
+										}
+									}}
+								>
+									<option value="">Split…</option>
+									{#each Array.from({ length: 32 - block.prefix }, (_, k) => block.prefix + 1 + k) as targetPrefix}
+										<option value={targetPrefix}>
+											/{targetPrefix}
+										</option>
+									{/each}
+								</select>
+							{/if}
+
+							<button
+								class="btn btn-xs btn-ghost"
+								aria-label={editingNoteIndex === i ? 'Close note' : 'Edit note'}
+								onclick={() => (editingNoteIndex = editingNoteIndex === i ? null : i)}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-3.5 w-3.5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									{#if editingNoteIndex === i}
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M5 13l4 4L19 7"
+										/>
+									{:else}
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+										/>
+									{/if}
+								</svg>
+							</button>
+
+							<button
+								class="btn btn-xs btn-ghost"
+								aria-label="Toggle allocated"
+								aria-pressed={block.isAllocated}
+								onclick={() => toggleAllocated(i)}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									class="h-3.5 w-3.5"
+									fill={block.isAllocated ? 'currentColor' : 'none'}
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+									/>
+								</svg>
+							</button>
 						</div>
 					</div>
 				{/each}

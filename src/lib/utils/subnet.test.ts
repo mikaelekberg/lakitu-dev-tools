@@ -10,6 +10,7 @@ import {
 	getColorForNetwork,
 	ipToString,
 	isValidCIDR,
+	unsplit,
 	DISPLAY_LIMIT
 } from './subnet';
 
@@ -397,5 +398,109 @@ describe('splitBlock', () => {
 	it('assigns distinct colors to adjacent sub-blocks', () => {
 		const { blocks } = splitBlock(ip(10, 0, 0, 0), 23, 24);
 		expect(blocks[0].color).not.toBe(blocks[1].color);
+	});
+
+	it('sets depth = parentDepth + 1 on children', () => {
+		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25, 3);
+		expect(blocks[0].depth).toBe(4);
+	});
+
+	it('sets splitFrom to parentCidr on children', () => {
+		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25, 0, '10.0.0.0/24');
+		expect(blocks[0].splitFrom).toBe('10.0.0.0/24');
+	});
+});
+
+describe('unsplit', () => {
+	const ip = (a: number, b: number, c: number, d: number): number =>
+		(((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
+
+	it('reconstructs a /24 from two /25 siblings', () => {
+		const child1 = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks[0];
+		const child2 = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks[1];
+		const parent = unsplit('10.0.0.0/24', [child1, child2]);
+		expect(parent).not.toBeNull();
+		expect(parent!.cidr).toBe('10.0.0.0/24');
+		expect(parent!.totalHosts).toBe(256);
+		expect(parent!.usableHosts).toBe(254);
+		expect(parent!.depth).toBe(0);
+		expect(parent!.splitFrom).toBe('');
+	});
+
+	it('reconstructs a /24 from four /26 siblings', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 26).blocks;
+		const parent = unsplit('10.0.0.0/24', children);
+		expect(parent).not.toBeNull();
+		expect(parent!.totalHosts).toBe(256);
+		expect(parent!.usableHosts).toBe(254);
+	});
+
+	it('reconstructs a /28 from two /29 siblings', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 28, 29).blocks;
+		const parent = unsplit('10.0.0.0/28', children);
+		expect(parent).not.toBeNull();
+		expect(parent!.usableHosts).toBe(14);
+		expect(parent!.totalHosts).toBe(16);
+	});
+
+	it('preserves note from first child', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		children[1].note = 'second child note';
+		children[0].note = 'first child note';
+		const parent = unsplit('10.0.0.0/24', children);
+		expect(parent!.note).toBe('first child note');
+	});
+
+	it('preserves note from any child when first is empty', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		children[1].note = 'second child note';
+		const parent = unsplit('10.0.0.0/24', children);
+		expect(parent!.note).toBe('second child note');
+	});
+
+	it('marks parent allocated when all children are allocated', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		children[0].isAllocated = true;
+		children[1].isAllocated = true;
+		const parent = unsplit('10.0.0.0/24', children);
+		expect(parent!.isAllocated).toBe(true);
+	});
+
+	it('does not mark parent allocated when some children are not', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		children[0].isAllocated = true;
+		const parent = unsplit('10.0.0.0/24', children);
+		expect(parent!.isAllocated).toBe(false);
+	});
+
+	it('returns null when children do not cover the full parent range', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const parent = unsplit('10.0.0.0/24', [children[0]]);
+		expect(parent).toBeNull();
+	});
+
+	it('returns null when children belong to a different parent', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const parent = unsplit('10.0.1.0/24', children);
+		expect(parent).toBeNull();
+	});
+
+	it('returns null for invalid parent CIDR', () => {
+		const parent = unsplit('not-a-cidr', []);
+		expect(parent).toBeNull();
+	});
+
+	it('handles /31 unsplit (RFC 3021)', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 30, 31).blocks;
+		const parent = unsplit('10.0.0.0/30', children);
+		expect(parent).not.toBeNull();
+		expect(parent!.usableHosts).toBe(2);
+	});
+
+	it('handles /32 unsplit', () => {
+		const children = splitBlock(ip(10, 0, 0, 0), 30, 32).blocks;
+		const parent = unsplit('10.0.0.0/30', children);
+		expect(parent).not.toBeNull();
+		expect(parent!.usableHosts).toBe(2);
 	});
 });
