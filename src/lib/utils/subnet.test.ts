@@ -10,8 +10,9 @@ import {
 	getColorForNetwork,
 	ipToString,
 	isValidCIDR,
-	unsplit,
-	DISPLAY_LIMIT
+	mergePair,
+	DISPLAY_LIMIT,
+	type SubnetBlock
 } from './subnet';
 
 describe('ipToString', () => {
@@ -398,93 +399,95 @@ describe('splitBlock', () => {
 		const { blocks } = splitBlock(ip(10, 0, 0, 0), 23, 24);
 		expect(blocks[0].color).not.toBe(blocks[1].color);
 	});
-
-	it('sets depth = parentDepth + 1 on children', () => {
-		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25, 3);
-		expect(blocks[0].depth).toBe(4);
-	});
-
-	it('sets splitFrom to parentCidr on children', () => {
-		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25, 0, '10.0.0.0/24');
-		expect(blocks[0].splitFrom).toBe('10.0.0.0/24');
-	});
 });
 
-describe('unsplit', () => {
+describe('mergePair', () => {
 	const ip = (a: number, b: number, c: number, d: number): number =>
 		(((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
 
-	it('reconstructs a /24 from two /25 siblings', () => {
-		const child1 = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks[0];
-		const child2 = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks[1];
-		const parent = unsplit('10.0.0.0/24', [child1, child2]);
+	it('merges two /25 siblings into a /24', () => {
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
 		expect(parent!.cidr).toBe('10.0.0.0/24');
 		expect(parent!.totalHosts).toBe(256);
 		expect(parent!.usableHosts).toBe(254);
-		expect(parent!.depth).toBe(0);
-		expect(parent!.splitFrom).toBe('');
+		expect(parent!.network).toBe(ip(10, 0, 0, 0));
 	});
 
-	it('reconstructs a /24 from four /26 siblings', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 26).blocks;
-		const parent = unsplit('10.0.0.0/24', children);
+	it('merges two /26 siblings into a /25', () => {
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 25, 26).blocks;
+		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
-		expect(parent!.totalHosts).toBe(256);
-		expect(parent!.usableHosts).toBe(254);
+		expect(parent!.cidr).toBe('10.0.0.0/25');
+		expect(parent!.totalHosts).toBe(128);
 	});
 
-	it('reconstructs a /28 from two /29 siblings', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 28, 29).blocks;
-		const parent = unsplit('10.0.0.0/28', children);
+	it('returns null when prefixes do not match', () => {
+		const [a] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const [b] = splitBlock(ip(10, 0, 0, 128), 25, 26).blocks;
+		const parent = mergePair(a, b);
+		expect(parent).toBeNull();
+	});
+
+	it('returns null when blocks are not adjacent', () => {
+		const blocks = splitBlock(ip(10, 0, 0, 0), 24, 26).blocks;
+		const parent = mergePair(blocks[0], blocks[3]);
+		expect(parent).toBeNull();
+	});
+
+	it('returns null when not power-of-2 aligned', () => {
+		// 10.0.0.64/26 and 10.0.0.128/26 — adjacent /26 but not aligned to /25
+		const blocks = splitBlock(ip(10, 0, 0, 0), 24, 26).blocks;
+		const parent = mergePair(blocks[1], blocks[2]);
+		expect(parent).toBeNull();
+	});
+
+	it('returns null when prefix is 0', () => {
+		const blockA: SubnetBlock = {
+			network: ip(0, 0, 0, 0),
+			cidr: '0.0.0.0/0',
+			networkAddress: '0.0.0.0',
+			broadcastAddress: '255.255.255.255',
+			usableRange: '0.0.0.1 - 255.255.255.254',
+			totalHosts: 2 ** 32,
+			usableHosts: 2 ** 32 - 2,
+			prefix: 0,
+			color: 'bg-primary/30',
+			note: ''
+		};
+		const blockB = { ...blockA };
+		const parent = mergePair(blockA, blockB);
+		expect(parent).toBeNull();
+	});
+
+	it('merges /31 siblings (RFC 3021) into /30', () => {
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 30, 31).blocks;
+		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
-		expect(parent!.usableHosts).toBe(14);
-		expect(parent!.totalHosts).toBe(16);
+		expect(parent!.prefix).toBe(30);
+		expect(parent!.usableHosts).toBe(2);
+	});
+
+	it('merges /32 siblings into /31', () => {
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 31, 32).blocks;
+		const parent = mergePair(a, b);
+		expect(parent).not.toBeNull();
+		expect(parent!.prefix).toBe(31);
+		expect(parent!.usableHosts).toBe(2);
 	});
 
 	it('preserves note from first child', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		children[1].note = 'second child note';
-		children[0].note = 'first child note';
-		const parent = unsplit('10.0.0.0/24', children);
-		expect(parent!.note).toBe('first child note');
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		a.note = 'first note';
+		const parent = mergePair(a, b);
+		expect(parent!.note).toBe('first note');
 	});
 
-	it('preserves note from any child when first is empty', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		children[1].note = 'second child note';
-		const parent = unsplit('10.0.0.0/24', children);
-		expect(parent!.note).toBe('second child note');
-	});
-
-	it('returns null when children do not cover the full parent range', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		const parent = unsplit('10.0.0.0/24', [children[0]]);
-		expect(parent).toBeNull();
-	});
-
-	it('returns null when children belong to a different parent', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		const parent = unsplit('10.0.1.0/24', children);
-		expect(parent).toBeNull();
-	});
-
-	it('returns null for invalid parent CIDR', () => {
-		const parent = unsplit('not-a-cidr', []);
-		expect(parent).toBeNull();
-	});
-
-	it('handles /31 unsplit (RFC 3021)', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 30, 31).blocks;
-		const parent = unsplit('10.0.0.0/30', children);
-		expect(parent).not.toBeNull();
-		expect(parent!.usableHosts).toBe(2);
-	});
-
-	it('handles /32 unsplit', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 30, 32).blocks;
-		const parent = unsplit('10.0.0.0/30', children);
-		expect(parent).not.toBeNull();
-		expect(parent!.usableHosts).toBe(2);
+	it('preserves note from second child when first is empty', () => {
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		b.note = 'second note';
+		const parent = mergePair(a, b);
+		expect(parent!.note).toBe('second note');
 	});
 });

@@ -39,9 +39,6 @@ export interface SubnetBlock {
 	prefix: number;
 	color: string;
 	note: string;
-	depth: number; // 0 = root block, 1+ = splits from root
-	splitFrom: string; // parent CIDR, '' for root
-	parentSplitFrom: string; // grandparent CIDR, restored on unsplit
 }
 
 export const DISPLAY_LIMIT = 1024;
@@ -261,17 +258,11 @@ export function partitionSubnet(
  * @param network       - The parent block's network address (32-bit unsigned)
  * @param currentPrefix - The parent block's prefix length
  * @param targetPrefix  - The desired child prefix length (must be > currentPrefix and <= 32)
- * @param parentDepth   - The parent block's depth (0 = root)
- * @param parentCidr    - The parent block's CIDR (e.g. "10.0.0.0/24")
- * @param parentSplitFrom - The parent block's splitFrom (to restore on unsplit)
  */
 export function splitBlock(
 	network: number,
 	currentPrefix: number,
-	targetPrefix: number,
-	parentDepth: number = 0,
-	parentCidr: string = '',
-	parentSplitFrom: string = ''
+	targetPrefix: number
 ): { blocks: SubnetBlock[]; error?: string } {
 	if (targetPrefix <= currentPrefix) {
 		return {
@@ -321,10 +312,7 @@ export function splitBlock(
 			usableHosts,
 			prefix: targetPrefix,
 			color: getColorForNetwork(childNetwork, targetPrefix),
-			note: '',
-			depth: parentDepth + 1,
-			splitFrom: parentCidr,
-			parentSplitFrom
+			note: ''
 		});
 	}
 
@@ -332,59 +320,54 @@ export function splitBlock(
 }
 
 /**
- * Reconstructs a parent subnet block from its children.
- * Useful for "unsplitting" — merging sibling blocks back into their parent.
+ * Merges two adjacent same-prefix subnet blocks into a single parent block.
+ * The two blocks must be adjacent (lower, lower + childSize), share the same
+ * prefix, and be aligned to a power-of-2 boundary for the merged prefix.
  *
- * @param parentCidr - The CIDR of the parent block to reconstruct (e.g. "10.0.0.0/24")
- * @param children   - All sibling blocks that share the same splitFrom === parentCidr.
- *                     Must be contiguous and together cover the full parent range.
- * @returns The reconstructed parent block, or null if the children don't cover the full range.
+ * @param a - First subnet block
+ * @param b - Second subnet block (must be adjacent to a)
+ * @returns The merged parent block at prefix-1, or null if invalid
  */
-export function unsplit(parentCidr: string, children: SubnetBlock[]): SubnetBlock | null {
-	const parsed = parseCIDR(parentCidr);
-	if (!parsed) return null;
+export function mergePair(a: SubnetBlock, b: SubnetBlock): SubnetBlock | null {
+	if (a.prefix !== b.prefix || a.prefix === 0) return null;
 
-	const childPrefix = children[0].prefix;
-	const expectedCount = 2 ** (childPrefix - parsed.prefix);
-	if (children.length !== expectedCount) return null;
+	const childSize = 2 ** (32 - a.prefix);
+	const lower = Math.min(a.network, b.network);
+	const upper = Math.max(a.network, b.network);
 
-	children.sort((a, b) => a.network - b.network);
-	const childSize = 2 ** (32 - childPrefix);
-	for (let i = 0; i < children.length; i++) {
-		if (children[i].network !== parsed.network + i * childSize) return null;
-	}
+	if (upper - lower !== childSize) return null;
 
-	const blockSize = 2 ** (32 - parsed.prefix);
+	const mergedPrefix = a.prefix - 1;
+	const mergedSize = childSize * 2;
+	if (lower % mergedSize !== 0) return null;
+
+	const blockSize = 2 ** (32 - mergedPrefix);
+	const broadcast = lower + blockSize - 1;
 	let usableRange: string;
 	let usableHosts: number;
-	if (parsed.prefix === 32) {
-		usableRange = ipToString(parsed.network);
+	if (mergedPrefix === 32) {
+		usableRange = ipToString(lower);
 		usableHosts = 1;
-	} else if (parsed.prefix === 31) {
-		usableRange = `${ipToString(parsed.network)} - ${ipToString(parsed.broadcast)}`;
+	} else if (mergedPrefix === 31) {
+		usableRange = `${ipToString(lower)} - ${ipToString(broadcast)}`;
 		usableHosts = 2;
 	} else {
-		usableRange = `${ipToString(parsed.network + 1)} - ${ipToString(parsed.broadcast - 1)}`;
+		usableRange = `${ipToString(lower + 1)} - ${ipToString(broadcast - 1)}`;
 		usableHosts = blockSize - 2;
 	}
 
-	const firstNote = children.find((c) => c.note)?.note ?? '';
-	const depth = children[0].depth - 1;
-	const splitFrom = children[0].parentSplitFrom;
+	const firstNote = [a, b].find((c) => c.note)?.note ?? '';
 
 	return {
-		network: parsed.network,
-		cidr: parentCidr,
-		networkAddress: ipToString(parsed.network),
-		broadcastAddress: ipToString(parsed.broadcast),
+		network: lower,
+		cidr: `${ipToString(lower)}/${mergedPrefix}`,
+		networkAddress: ipToString(lower),
+		broadcastAddress: ipToString(broadcast),
 		usableRange,
 		totalHosts: blockSize,
 		usableHosts,
-		prefix: parsed.prefix,
-		color: getColorForNetwork(parsed.network, parsed.prefix),
-		note: firstNote,
-		depth,
-		splitFrom,
-		parentSplitFrom: splitFrom
+		prefix: mergedPrefix,
+		color: getColorForNetwork(lower, mergedPrefix),
+		note: firstNote
 	};
 }

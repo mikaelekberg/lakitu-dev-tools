@@ -5,7 +5,7 @@
 		calculateTotalHosts,
 		splitBlock,
 		getColorForNetwork,
-		unsplit,
+		mergePair,
 		DISPLAY_LIMIT,
 		type ParsedCIDR,
 		type SubnetBlock
@@ -68,22 +68,30 @@
 	let blocks = $state<SubnetBlock[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
-	let editingNoteIndex = $state<number | null>(null);
 
-	function canUnmerge(splitFrom: string): boolean {
-		if (!splitFrom) return false;
-		const siblings = blocks.filter((b) => b.splitFrom === splitFrom);
-		if (siblings.length < 2) return false;
-		const parent = parseCIDR(splitFrom);
-		if (!parent) return false;
-		const expected = 2 ** (siblings[0].prefix - parent.prefix);
-		return siblings.length === expected;
+	function canMerge(index: number): boolean {
+		const block = blocks[index];
+		if (block.prefix === 0) return false;
+		const childSize = 2 ** (32 - block.prefix);
+		const mergedSize = childSize * 2;
+		if (
+			index + 1 < blocks.length &&
+			blocks[index + 1].prefix === block.prefix &&
+			block.network % mergedSize === 0
+		)
+			return true;
+		if (
+			index - 1 >= 0 &&
+			blocks[index - 1].prefix === block.prefix &&
+			blocks[index - 1].network % mergedSize === 0
+		)
+			return true;
+		return false;
 	}
 
 	function handleLoad() {
 		partitionError = null;
 		partitionWarning = null;
-		editingNoteIndex = null;
 
 		const trimmed = supernetCidr.trim();
 		if (!trimmed) {
@@ -135,14 +143,11 @@
 					usableHosts,
 					prefix: parsed.prefix,
 					color: getColorForNetwork(parsed.network, parsed.prefix),
-					note: '',
-					depth: 0,
-					splitFrom: '',
-					parentSplitFrom: ''
+					note: ''
 				}
 			];
 		} else {
-			const result = splitBlock(parsed.network, parsed.prefix, targetPrefix, 0, parsed.cidrStr, '');
+			const result = splitBlock(parsed.network, parsed.prefix, targetPrefix);
 			if (result.error) {
 				partitionError = result.error;
 				return;
@@ -165,14 +170,7 @@
 			return;
 		}
 
-		const result = splitBlock(
-			parent.network,
-			parent.prefix,
-			targetPrefix,
-			parent.depth,
-			parent.cidr,
-			parent.splitFrom
-		);
+		const result = splitBlock(parent.network, parent.prefix, targetPrefix);
 		if (result.error) {
 			partitionError = result.error;
 			return;
@@ -186,22 +184,42 @@
 		partitionWarning = null;
 	}
 
-	function handleMerge(splitFrom: string) {
+	function handleMerge(index: number) {
 		partitionError = null;
 		partitionWarning = null;
 
-		const children = blocks.filter((b) => b.splitFrom === splitFrom);
-		if (children.length === 0) return;
+		const block = blocks[index];
+		if (block.prefix === 0) return;
 
-		const parent = unsplit(splitFrom, children);
-		if (!parent) {
-			partitionWarning = 'Cannot merge; sibling blocks no longer cover the full parent range.';
+		const childSize = 2 ** (32 - block.prefix);
+		const mergedSize = childSize * 2;
+
+		let neighborIdx = -1;
+		if (
+			index + 1 < blocks.length &&
+			blocks[index + 1].prefix === block.prefix &&
+			block.network % mergedSize === 0
+		) {
+			neighborIdx = index + 1;
+		} else if (
+			index - 1 >= 0 &&
+			blocks[index - 1].prefix === block.prefix &&
+			blocks[index - 1].network % mergedSize === 0
+		) {
+			neighborIdx = index - 1;
+		}
+
+		if (neighborIdx < 0) return;
+
+		const merged = mergePair(block, blocks[neighborIdx]);
+		if (!merged) {
+			partitionWarning = 'Cannot merge: blocks not aligned to a power-of-2 boundary.';
 			return;
 		}
 
-		const firstChildIdx = blocks.findIndex((b) => b.splitFrom === splitFrom);
-		const lastChildIdx = blocks.findLastIndex((b) => b.splitFrom === splitFrom);
-		blocks = [...blocks.slice(0, firstChildIdx), parent, ...blocks.slice(lastChildIdx + 1)];
+		const firstIdx = Math.min(index, neighborIdx);
+		const lastIdx = Math.max(index, neighborIdx);
+		blocks = [...blocks.slice(0, firstIdx), merged, ...blocks.slice(lastIdx + 1)];
 	}
 
 	function handleNoteChange(index: number, note: string) {
@@ -214,7 +232,6 @@
 		blocks = [];
 		partitionError = null;
 		partitionWarning = null;
-		editingNoteIndex = null;
 	}
 
 	function handlePartitionKeydown(e: KeyboardEvent) {
@@ -553,45 +570,24 @@
 									{block.usableRange}
 								</span>
 							</div>
-							<div class="text-xs text-base-content/40">
-								{#if block.splitFrom}
-									<span class="font-mono">from {block.splitFrom}</span>
-								{:else}
-									<span class="italic">root</span>
-								{/if}
-								{#if block.depth > 0}
-									<span class="ml-1 opacity-50">(d{block.depth})</span>
-								{/if}
-							</div>
 
-							{#if block.note && editingNoteIndex !== i}
-								<div
-									class="text-xs text-base-content/50 mt-0.5 italic border-l-2 border-base-content/20 pl-2 truncate"
-								>
-									"{block.note}"
-								</div>
-							{/if}
-
-							{#if editingNoteIndex === i}
-								<textarea
-									class="textarea textarea-bordered textarea-xs w-full mt-1"
-									rows="2"
-									placeholder="Note for this subnet..."
-									value={block.note}
-									oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
-								></textarea>
-							{/if}
+							<input
+								type="text"
+								class="input input-xs input-ghost w-full mt-0.5 text-xs"
+								placeholder="add a note…"
+								value={block.note}
+								oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
+							/>
 						</div>
 
 						<div class="flex items-center gap-1 shrink-0">
-							{#if canUnmerge(block.splitFrom)}
+							{#if canMerge(i)}
 								<button
 									class="btn btn-xs btn-ghost"
-									title="Merge siblings back to {block.splitFrom}"
-									onclick={() => handleMerge(block.splitFrom)}
+									title="Merge with adjacent subnet"
+									onclick={() => handleMerge(i)}
 								>
 									<Merge class="h-3.5 w-3.5" />
-									<span class="text-xs ml-1">Merge</span>
 								</button>
 							{/if}
 							{#if block.prefix < 32}
@@ -601,38 +597,8 @@
 									onclick={() => handleSplit(i)}
 								>
 									<Split class="h-3.5 w-3.5" />
-									<span class="text-xs ml-1">Split</span>
 								</button>
 							{/if}
-							<button
-								class="btn btn-xs btn-ghost"
-								aria-label={editingNoteIndex === i ? 'Close note' : 'Edit note'}
-								onclick={() => (editingNoteIndex = editingNoteIndex === i ? null : i)}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-3.5 w-3.5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									{#if editingNoteIndex === i}
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M5 13l4 4L19 7"
-										/>
-									{:else}
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-										/>
-									{/if}
-								</svg>
-							</button>
 						</div>
 					</div>
 				{/each}
