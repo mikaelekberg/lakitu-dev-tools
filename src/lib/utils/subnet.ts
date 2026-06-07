@@ -12,7 +12,7 @@ export interface ParsedCIDR {
 	wildcard: number; // wildcard mask (inverted netmask)
 	network: number; // network address
 	broadcast: number; // broadcast address
-	hosts: bigint; // number of usable hosts
+	hosts: number; // number of usable hosts
 	ipStr: string; // original IP string
 	cidrStr: string; // normalized CIDR string
 }
@@ -28,17 +28,17 @@ export interface SubnetPartition {
 	color: string; // visual color class
 }
 
+export const DISPLAY_LIMIT = 256;
+
 const SUBNET_COLORS = [
-	'bg-blue-500',
-	'bg-green-500',
-	'bg-yellow-500',
-	'bg-purple-500',
-	'bg-pink-500',
-	'bg-indigo-500',
-	'bg-red-500',
-	'bg-teal-500',
-	'bg-orange-500',
-	'bg-cyan-500'
+	'bg-primary/30',
+	'bg-secondary/30',
+	'bg-accent/30',
+	'bg-info/30',
+	'bg-success/30',
+	'bg-warning/30',
+	'bg-error/30',
+	'bg-neutral/30'
 ];
 
 /**
@@ -114,7 +114,7 @@ export function parseCIDR(input: string): ParsedCIDR | null {
 
 	// Parse prefix length
 	const prefix = parseInt(prefixStr, 10);
-	if (isNaN(prefix) || prefix < 0 || prefix > 32) return null;
+	if (!/^\d+$/.test(prefixStr) || isNaN(prefix) || prefix < 0 || prefix > 32) return null;
 
 	// Parse the four octets
 	const octets = ipStr.split('.');
@@ -132,7 +132,7 @@ export function parseCIDR(input: string): ParsedCIDR | null {
 	const wildcard = ~netmask >>> 0;
 	const network = (ip & netmask) >>> 0;
 	const broadcast = (network | wildcard) >>> 0;
-	const hosts = BigInt(calculateUsableHosts(prefix));
+	const hosts = calculateUsableHosts(prefix);
 
 	return {
 		ip,
@@ -180,8 +180,10 @@ export function partitionSubnet(
 	}
 
 	const subnetSize = 2 ** (32 - targetPrefix);
+	// The loop runs at least once when targetPrefix >= parsed.prefix, producing
+	// exactly 2^(targetPrefix - parsed.prefix) subnets. When targetPrefix <
+	// parsed.prefix we return early above.
 	const totalSubnets = 2 ** (targetPrefix - parsed.prefix);
-	const DISPLAY_LIMIT = 256;
 
 	const allocated = new Set(allocatedIndices ?? []);
 	const subnets: SubnetPartition[] = [];

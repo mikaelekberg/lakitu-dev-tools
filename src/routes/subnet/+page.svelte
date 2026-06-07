@@ -4,6 +4,7 @@
 		ipToString,
 		calculateTotalHosts,
 		partitionSubnet,
+		DISPLAY_LIMIT,
 		type ParsedCIDR,
 		type SubnetPartition
 	} from '$lib/utils/subnet';
@@ -60,7 +61,7 @@
 
 	// Partition tab state
 	let supernetCidr = $state('');
-	let subnetPrefix = $state<number | undefined>(undefined);
+	let subnetPrefix = $state<number | null>(null);
 	let partitionResult = $state<SubnetPartition[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
@@ -76,7 +77,12 @@
 			partitionError = 'Please enter a supernet CIDR.';
 			return;
 		}
-		if (subnetPrefix === undefined || subnetPrefix < 1 || subnetPrefix > 32) {
+		if (
+			subnetPrefix === null ||
+			!Number.isFinite(subnetPrefix) ||
+			subnetPrefix < 1 ||
+			subnetPrefix > 32
+		) {
 			partitionError = 'Please enter a valid subnet prefix (1-32).';
 			return;
 		}
@@ -93,15 +99,15 @@
 		const parsed = parseCIDR(trimmed);
 		if (parsed) {
 			const totalSubnets = 2 ** (subnetPrefix - parsed.prefix);
-			if (totalSubnets > 256) {
-				partitionWarning = `This partition produces ${totalSubnets.toLocaleString()} subnets. Only the first 256 are displayed.`;
+			if (totalSubnets > DISPLAY_LIMIT) {
+				partitionWarning = `This partition produces ${totalSubnets.toLocaleString()} subnets. Only the first ${DISPLAY_LIMIT} are displayed.`;
 			}
 		}
 	}
 
 	function handlePartitionClear() {
 		supernetCidr = '';
-		subnetPrefix = undefined;
+		subnetPrefix = null;
 		partitionResult = [];
 		partitionError = null;
 		partitionWarning = null;
@@ -115,7 +121,7 @@
 			allocatedIndices = [...allocatedIndices, index];
 		}
 		// Re-partition to refresh colors
-		if (supernetCidr.trim() && subnetPrefix !== undefined) {
+		if (supernetCidr.trim() && subnetPrefix !== null) {
 			const result = partitionSubnet(supernetCidr.trim(), subnetPrefix, allocatedIndices);
 			if (!result.error) {
 				partitionResult = result.subnets;
@@ -124,8 +130,10 @@
 	}
 
 	function handleSelectAll() {
+		partitionError = null;
+		partitionWarning = null;
 		allocatedIndices = partitionResult.map((_, i) => i);
-		if (supernetCidr.trim() && subnetPrefix !== undefined) {
+		if (supernetCidr.trim() && subnetPrefix !== null) {
 			const result = partitionSubnet(supernetCidr.trim(), subnetPrefix, allocatedIndices);
 			if (!result.error) {
 				partitionResult = result.subnets;
@@ -134,8 +142,10 @@
 	}
 
 	function handleClearAllocated() {
+		partitionError = null;
+		partitionWarning = null;
 		allocatedIndices = [];
-		if (supernetCidr.trim() && subnetPrefix !== undefined) {
+		if (supernetCidr.trim() && subnetPrefix !== null) {
 			const result = partitionSubnet(supernetCidr.trim(), subnetPrefix, allocatedIndices);
 			if (!result.error) {
 				partitionResult = result.subnets;
@@ -328,7 +338,7 @@
 								</tr>
 								<tr>
 									<td class="font-medium">Usable Hosts</td>
-									<td class="font-mono">{result.hosts.toString()}</td>
+									<td class="font-mono">{result.hosts.toLocaleString()}</td>
 								</tr>
 							</tbody>
 						</table>
@@ -493,7 +503,7 @@
 					Clear All
 				</button>
 				<span class="text-sm text-base-content/70 self-center ml-2">
-					{allocatedIndices.length} of {partitionResult.length} subnets allocated
+					{partitionResult.filter((s) => s.isAllocated).length} of {partitionResult.length} subnets allocated
 				</span>
 			</div>
 
@@ -503,6 +513,7 @@
 						class="card card-compact bg-base-200 hover:bg-base-300 cursor-pointer text-left transition-colors {subnet.isAllocated
 							? 'ring-2 ring-primary'
 							: ''}"
+						aria-pressed={subnet.isAllocated}
 						onclick={() => toggleAllocated(i)}
 					>
 						<div class="h-2 rounded-t-box {subnet.color}"></div>
