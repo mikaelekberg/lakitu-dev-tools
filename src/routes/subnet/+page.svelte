@@ -3,10 +3,11 @@
 		parseCIDR,
 		ipToString,
 		calculateTotalHosts,
-		partitionSubnet,
+		splitBlock,
+		getColorForNetwork,
 		DISPLAY_LIMIT,
 		type ParsedCIDR,
-		type SubnetPartition
+		type SubnetBlock
 	} from '$lib/utils/subnet';
 
 	let input = $state('');
@@ -61,101 +62,134 @@
 
 	// Partition tab state
 	let supernetCidr = $state('');
-	let subnetPrefix = $state<number | null>(null);
-	let partitionResult = $state<SubnetPartition[]>([]);
+	let blocks = $state<SubnetBlock[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
-	let allocatedIndices = $state<number[]>([]);
+	let editingNoteIndex = $state<number | null>(null);
 
-	function handlePartition() {
+	function buildRange(
+		prefix: number,
+		network: number,
+		broadcast: number
+	): {
+		range: string;
+		hosts: number;
+	} {
+		if (prefix === 32) {
+			return { range: ipToString(network), hosts: 1 };
+		}
+		if (prefix === 31) {
+			return { range: `${ipToString(network)} - ${ipToString(broadcast)}`, hosts: 2 };
+		}
+		return {
+			range: `${ipToString(network + 1)} - ${ipToString(broadcast - 1)}`,
+			hosts: 2 ** (32 - prefix) - 2
+		};
+	}
+
+	function handleLoad() {
 		partitionError = null;
 		partitionWarning = null;
-		partitionResult = [];
+		editingNoteIndex = null;
 
 		const trimmed = supernetCidr.trim();
 		if (!trimmed) {
 			partitionError = 'Please enter a supernet CIDR.';
 			return;
 		}
-		if (
-			subnetPrefix === null ||
-			!Number.isFinite(subnetPrefix) ||
-			subnetPrefix < 1 ||
-			subnetPrefix > 32
-		) {
-			partitionError = 'Please enter a valid subnet prefix (1-32).';
+
+		const parsed = parseCIDR(trimmed);
+		if (!parsed) {
+			partitionError = 'Invalid CIDR notation. Please enter a valid CIDR (e.g., 10.0.0.0/16).';
 			return;
 		}
 
-		const result = partitionSubnet(trimmed, subnetPrefix, allocatedIndices);
+		const blockSize = 2 ** (32 - parsed.prefix);
+		const { range, hosts } = buildRange(parsed.prefix, parsed.network, parsed.broadcast);
+
+		blocks = [
+			{
+				network: parsed.network,
+				cidr: parsed.cidrStr,
+				networkAddress: ipToString(parsed.network),
+				broadcastAddress: ipToString(parsed.broadcast),
+				usableRange: range,
+				totalHosts: blockSize,
+				usableHosts: hosts,
+				prefix: parsed.prefix,
+				isAllocated: false,
+				color: getColorForNetwork(parsed.network, parsed.prefix),
+				note: ''
+			}
+		];
+	}
+
+	function handleSplit(index: number, targetPrefix: number) {
+		partitionError = null;
+
+		const parent = blocks[index];
+		if (targetPrefix <= parent.prefix) {
+			partitionError = `Target prefix (/${targetPrefix}) must be larger than /${parent.prefix}.`;
+			return;
+		}
+
+		const newCount = 2 ** (targetPrefix - parent.prefix);
+		const totalAfter = blocks.length - 1 + newCount;
+		if (totalAfter > DISPLAY_LIMIT) {
+			partitionWarning = `Cannot split: would create ${totalAfter.toLocaleString()} blocks, exceeding the ${DISPLAY_LIMIT} display limit.`;
+			return;
+		}
+
+		const result = splitBlock(parent.network, parent.prefix, targetPrefix);
 		if (result.error) {
 			partitionError = result.error;
 			return;
 		}
 
-		partitionResult = result.subnets;
-
-		// Warn if too many subnets
-		const parsed = parseCIDR(trimmed);
-		if (parsed) {
-			const totalSubnets = 2 ** (subnetPrefix - parsed.prefix);
-			if (totalSubnets > DISPLAY_LIMIT) {
-				partitionWarning = `This partition produces ${totalSubnets.toLocaleString()} subnets. Only the first ${DISPLAY_LIMIT} are displayed.`;
+		if (parent.note) {
+			result.blocks[0].note = parent.note;
+		}
+		if (parent.isAllocated) {
+			for (const b of result.blocks) {
+				b.isAllocated = true;
 			}
 		}
-	}
 
-	function handlePartitionClear() {
-		supernetCidr = '';
-		subnetPrefix = null;
-		partitionResult = [];
-		partitionError = null;
+		blocks = [...blocks.slice(0, index), ...result.blocks, ...blocks.slice(index + 1)];
 		partitionWarning = null;
-		allocatedIndices = [];
 	}
 
 	function toggleAllocated(index: number) {
-		if (allocatedIndices.includes(index)) {
-			allocatedIndices = allocatedIndices.filter((i) => i !== index);
-		} else {
-			allocatedIndices = [...allocatedIndices, index];
-		}
-		// Re-partition to refresh colors
-		if (supernetCidr.trim() && subnetPrefix !== null) {
-			const result = partitionSubnet(supernetCidr.trim(), subnetPrefix, allocatedIndices);
-			if (!result.error) {
-				partitionResult = result.subnets;
-			}
-		}
+		blocks = blocks.map((b, i) => (i === index ? { ...b, isAllocated: !b.isAllocated } : b));
+	}
+
+	function handleNoteChange(index: number, note: string) {
+		blocks = blocks.map((b, i) => (i === index ? { ...b, note } : b));
 	}
 
 	function handleSelectAll() {
 		partitionError = null;
 		partitionWarning = null;
-		allocatedIndices = partitionResult.map((_, i) => i);
-		if (supernetCidr.trim() && subnetPrefix !== null) {
-			const result = partitionSubnet(supernetCidr.trim(), subnetPrefix, allocatedIndices);
-			if (!result.error) {
-				partitionResult = result.subnets;
-			}
-		}
+		blocks = blocks.map((b) => ({ ...b, isAllocated: true }));
 	}
 
 	function handleClearAllocated() {
 		partitionError = null;
 		partitionWarning = null;
-		allocatedIndices = [];
-		if (supernetCidr.trim() && subnetPrefix !== null) {
-			const result = partitionSubnet(supernetCidr.trim(), subnetPrefix, allocatedIndices);
-			if (!result.error) {
-				partitionResult = result.subnets;
-			}
-		}
+		blocks = blocks.map((b) => ({ ...b, isAllocated: false }));
+	}
+
+	function handlePartitionClear() {
+		supernetCidr = '';
+		blocks = [];
+		partitionError = null;
+		partitionWarning = null;
+		editingNoteIndex = null;
 	}
 
 	function handlePartitionKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
-			handlePartition();
+			handleLoad();
 		}
 	}
 </script>
@@ -403,20 +437,12 @@
 						onkeydown={handlePartitionKeydown}
 					/>
 				</fieldset>
-				<fieldset class="fieldset mt-4">
-					<legend class="fieldset-legend">Subnet Prefix</legend>
-					<input
-						type="number"
-						class="input input-bordered w-full"
-						placeholder="24"
-						min="1"
-						max="32"
-						bind:value={subnetPrefix}
-						onkeydown={handlePartitionKeydown}
-					/>
-				</fieldset>
+				<p class="text-xs text-base-content/60 mt-2">
+					Load a supernet, then split any block into smaller subnets. Add a note to any subnet for
+					documentation.
+				</p>
 				<div class="flex flex-wrap gap-3 mt-4">
-					<button class="btn btn-primary" onclick={handlePartition}>
+					<button class="btn btn-primary" onclick={handleLoad}>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5 mr-1"
@@ -431,7 +457,7 @@
 								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
 							/>
 						</svg>
-						Partition
+						Load
 					</button>
 					<button class="btn btn-ghost" onclick={handlePartitionClear}>
 						<svg
@@ -494,37 +520,135 @@
 			</div>
 		{/if}
 
-		{#if partitionResult.length > 0}
-			<div class="flex flex-wrap gap-3 mb-4">
+		{#if blocks.length > 0}
+			<div class="flex flex-wrap gap-3 mb-4 items-center">
 				<button class="btn btn-sm btn-outline btn-primary" onclick={handleSelectAll}>
 					Select All
 				</button>
 				<button class="btn btn-sm btn-outline btn-ghost" onclick={handleClearAllocated}>
 					Clear All
 				</button>
-				<span class="text-sm text-base-content/70 self-center ml-2">
-					{partitionResult.filter((s) => s.isAllocated).length} of {partitionResult.length} subnets allocated
+				<span class="text-sm text-base-content/70 ml-2">
+					{blocks.filter((b) => b.isAllocated).length} of {blocks.length} blocks allocated
 				</span>
 			</div>
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-				{#each partitionResult as subnet, i (subnet.cidr)}
-					<button
-						class="card card-compact bg-base-200 hover:bg-base-300 cursor-pointer text-left transition-colors {subnet.isAllocated
+				{#each blocks as block, i (block.cidr + '-' + i)}
+					<div
+						class="card card-compact bg-base-200 transition-colors {block.isAllocated
 							? 'ring-2 ring-primary'
 							: ''}"
-						aria-pressed={subnet.isAllocated}
-						onclick={() => toggleAllocated(i)}
 					>
-						<div class="h-2 rounded-t-box {subnet.color}"></div>
+						<div class="h-2 rounded-t-box {block.color}"></div>
 						<div class="card-body p-3">
-							<div class="font-mono text-sm font-medium">{subnet.cidr}</div>
+							<div class="font-mono text-sm font-medium">{block.cidr}</div>
 							<div class="text-xs text-base-content/70">
-								{subnet.usableHosts.toLocaleString()} usable hosts
+								{block.usableHosts.toLocaleString()} usable hosts
 							</div>
-							<div class="text-xs text-base-content/70 truncate">{subnet.usableRange}</div>
+							<div class="text-xs text-base-content/70 truncate">{block.usableRange}</div>
+
+							{#if block.note && editingNoteIndex !== i}
+								<div
+									class="text-xs text-base-content/60 mt-1 italic border-l-2 border-base-content/20 pl-2"
+								>
+									"{block.note}"
+								</div>
+							{/if}
+
+							{#if editingNoteIndex === i}
+								<textarea
+									class="textarea textarea-bordered textarea-xs w-full mt-2"
+									rows="2"
+									placeholder="Note for this subnet..."
+									value={block.note}
+									oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
+								></textarea>
+							{/if}
+
+							<div class="flex flex-wrap gap-1 mt-2">
+								{#if block.prefix < 32}
+									<select
+										class="select select-xs select-bordered"
+										aria-label="Split {block.cidr} into a smaller prefix"
+										onchange={(e) => {
+											const v = e.currentTarget.value;
+											const target = parseInt(v, 10);
+											e.currentTarget.value = '';
+											if (!isNaN(target) && target > block.prefix) {
+												handleSplit(i, target);
+											}
+										}}
+									>
+										<option value="">Split to...</option>
+										{#each Array.from({ length: 32 - block.prefix }, (_, k) => block.prefix + 1 + k) as targetPrefix}
+											<option value={targetPrefix}
+												>/{targetPrefix} ({2 ** (32 - targetPrefix)} addrs)</option
+											>
+										{/each}
+									</select>
+								{/if}
+								<button
+									class="btn btn-xs btn-ghost"
+									aria-label={editingNoteIndex === i ? 'Close note' : 'Edit note'}
+									onclick={() => (editingNoteIndex = editingNoteIndex === i ? null : i)}
+								>
+									{#if editingNoteIndex === i}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-3.5 w-3.5"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M5 13l4 4L19 7"
+											/>
+										</svg>
+									{:else}
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											class="h-3.5 w-3.5"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+											/>
+										</svg>
+									{/if}
+								</button>
+								<button
+									class="btn btn-xs btn-ghost"
+									aria-label="Toggle allocated"
+									aria-pressed={block.isAllocated}
+									onclick={() => toggleAllocated(i)}
+								>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-3.5 w-3.5"
+										fill={block.isAllocated ? 'currentColor' : 'none'}
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+										/>
+									</svg>
+								</button>
+							</div>
 						</div>
-					</button>
+					</div>
 				{/each}
 			</div>
 		{:else if !partitionError}
@@ -544,9 +668,7 @@
 							d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
 						/>
 					</svg>
-					<p class="text-base-content/50">
-						Enter a supernet CIDR and target prefix, then click Partition.
-					</p>
+					<p class="text-base-content/50">Enter a supernet CIDR and click Load to begin.</p>
 				</div>
 			</div>
 		{/if}

@@ -5,7 +5,9 @@ import {
 	calculateUsableHosts,
 	calculateTotalHosts,
 	partitionSubnet,
+	splitBlock,
 	getSubnetColor,
+	getColorForNetwork,
 	ipToString,
 	isValidCIDR,
 	DISPLAY_LIMIT
@@ -291,5 +293,109 @@ describe('partitionSubnet', () => {
 		expect(error).toBeUndefined();
 		expect(subnets).toHaveLength(4);
 		expect(subnets[0].usableHosts).toBe(1);
+	});
+});
+
+describe('getColorForNetwork', () => {
+	it('gives the first child of a split the same color as the parent', () => {
+		const parentColor = getColorForNetwork(0x0a000000, 24);
+		const firstChildColor = getColorForNetwork(0x0a000000, 25);
+		expect(firstChildColor).toBe(parentColor);
+	});
+
+	it('gives the second child a different color from the first', () => {
+		const firstChild = getColorForNetwork(0x0a000000, 25);
+		const secondChild = getColorForNetwork(0x0a000080, 25);
+		expect(secondChild).not.toBe(firstChild);
+	});
+
+	it('cycles through the palette across many subnets', () => {
+		const colors = new Set<string>();
+		for (let i = 0; i < 8; i++) {
+			colors.add(getColorForNetwork(i * 256, 24));
+		}
+		expect(colors.size).toBe(8);
+	});
+});
+
+describe('splitBlock', () => {
+	const ip = (a: number, b: number, c: number, d: number): number =>
+		(((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
+
+	it('splits a /24 into two /25 sub-blocks at correct addresses', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 25);
+		expect(error).toBeUndefined();
+		expect(blocks).toHaveLength(2);
+		expect(blocks[0].cidr).toBe('10.0.0.0/25');
+		expect(blocks[0].network).toBe(ip(10, 0, 0, 0));
+		expect(blocks[0].totalHosts).toBe(128);
+		expect(blocks[0].usableHosts).toBe(126);
+		expect(blocks[1].cidr).toBe('10.0.0.128/25');
+		expect(blocks[1].network).toBe(ip(10, 0, 0, 128));
+		expect(blocks[1].broadcastAddress).toBe('10.0.0.255');
+	});
+
+	it('splits a /23 into four /25 sub-blocks in network order', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 23, 25);
+		expect(error).toBeUndefined();
+		expect(blocks).toHaveLength(4);
+		expect(blocks[0].cidr).toBe('10.0.0.0/25');
+		expect(blocks[1].cidr).toBe('10.0.0.128/25');
+		expect(blocks[2].cidr).toBe('10.0.1.0/25');
+		expect(blocks[3].cidr).toBe('10.0.1.128/25');
+	});
+
+	it('splits a /16 into 256 /24 sub-blocks', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 16, 24);
+		expect(error).toBeUndefined();
+		expect(blocks).toHaveLength(256);
+		expect(blocks[0].cidr).toBe('10.0.0.0/24');
+		expect(blocks[255].cidr).toBe('10.0.255.0/24');
+	});
+
+	it('returns an error when target prefix equals current prefix', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 24);
+		expect(error).toBeDefined();
+		expect(blocks).toHaveLength(0);
+	});
+
+	it('returns an error when target prefix is smaller than current', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 16);
+		expect(error).toBeDefined();
+		expect(blocks).toHaveLength(0);
+	});
+
+	it('returns an error when target prefix is greater than 32', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 33);
+		expect(error).toBeDefined();
+		expect(blocks).toHaveLength(0);
+	});
+
+	it('handles /31 split (RFC 3021, 2 usable per block)', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 30, 31);
+		expect(error).toBeUndefined();
+		expect(blocks).toHaveLength(2);
+		expect(blocks[0].usableHosts).toBe(2);
+		expect(blocks[0].usableRange).toBe('10.0.0.0 - 10.0.0.1');
+	});
+
+	it('handles /32 split (1 usable per block)', () => {
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 30, 32);
+		expect(error).toBeUndefined();
+		expect(blocks).toHaveLength(4);
+		expect(blocks[0].usableHosts).toBe(1);
+		expect(blocks[0].usableRange).toBe('10.0.0.0');
+		expect(blocks[3].cidr).toBe('10.0.0.3/32');
+	});
+
+	it('returns blocks with empty notes and unallocated state', () => {
+		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25);
+		expect(blocks[0].note).toBe('');
+		expect(blocks[0].isAllocated).toBe(false);
+	});
+
+	it('assigns distinct colors to adjacent sub-blocks', () => {
+		const { blocks } = splitBlock(ip(10, 0, 0, 0), 23, 24);
+		expect(blocks[0].color).not.toBe(blocks[1].color);
 	});
 });

@@ -28,6 +28,20 @@ export interface SubnetPartition {
 	color: string; // visual color class
 }
 
+export interface SubnetBlock {
+	network: number; // 32-bit unsigned network address (for math)
+	cidr: string; // e.g. "10.0.0.0/24"
+	networkAddress: string;
+	broadcastAddress: string;
+	usableRange: string;
+	totalHosts: number;
+	usableHosts: number;
+	prefix: number;
+	isAllocated: boolean;
+	color: string;
+	note: string;
+}
+
 export const DISPLAY_LIMIT = 256;
 
 const SUBNET_COLORS = [
@@ -92,6 +106,16 @@ export function calculateTotalHosts(prefix: number): number {
  */
 export function getSubnetColor(index: number): string {
 	return SUBNET_COLORS[index % SUBNET_COLORS.length];
+}
+
+/**
+ * Returns a stable colour for a block at the given network address and prefix.
+ * Color is derived from the block's position within its supernet, so adjacent
+ * blocks of equal size always get distinct colors.
+ */
+export function getColorForNetwork(network: number, prefix: number): string {
+	const blockIndex = Math.floor(network / 2 ** (32 - prefix));
+	return SUBNET_COLORS[blockIndex % SUBNET_COLORS.length];
 }
 
 /**
@@ -225,4 +249,74 @@ export function partitionSubnet(
 	}
 
 	return { subnets };
+}
+
+/**
+ * Splits a single subnet block into smaller sub-blocks of a given target prefix.
+ * Returns the new child blocks (in network-address order). Caller is responsible
+ * for replacing the parent block in its own state.
+ *
+ * @param network       - The parent block's network address (32-bit unsigned)
+ * @param currentPrefix - The parent block's prefix length
+ * @param targetPrefix  - The desired child prefix length (must be > currentPrefix and <= 32)
+ */
+export function splitBlock(
+	network: number,
+	currentPrefix: number,
+	targetPrefix: number
+): { blocks: SubnetBlock[]; error?: string } {
+	if (targetPrefix <= currentPrefix) {
+		return {
+			blocks: [],
+			error: `Target prefix (/${targetPrefix}) must be larger than the current prefix (/${currentPrefix}).`
+		};
+	}
+
+	if (targetPrefix > 32) {
+		return {
+			blocks: [],
+			error: 'Target prefix must be between 0 and 32.'
+		};
+	}
+
+	const blockSize = 2 ** (32 - targetPrefix);
+	const totalChildren = 2 ** (targetPrefix - currentPrefix);
+	const blocks: SubnetBlock[] = [];
+
+	for (let i = 0; i < totalChildren; i++) {
+		const childNetwork = network + i * blockSize;
+		const childBroadcast = childNetwork + blockSize - 1;
+		const netAddr = ipToString(childNetwork);
+		const bcastAddr = ipToString(childBroadcast);
+
+		let usableRange: string;
+		let usableHosts: number;
+
+		if (targetPrefix === 32) {
+			usableRange = netAddr;
+			usableHosts = 1;
+		} else if (targetPrefix === 31) {
+			usableRange = `${netAddr} - ${bcastAddr}`;
+			usableHosts = 2;
+		} else {
+			usableRange = `${ipToString(childNetwork + 1)} - ${ipToString(childBroadcast - 1)}`;
+			usableHosts = blockSize - 2;
+		}
+
+		blocks.push({
+			network: childNetwork,
+			cidr: `${netAddr}/${targetPrefix}`,
+			networkAddress: netAddr,
+			broadcastAddress: bcastAddr,
+			usableRange,
+			totalHosts: blockSize,
+			usableHosts,
+			prefix: targetPrefix,
+			isAllocated: false,
+			color: getColorForNetwork(childNetwork, targetPrefix),
+			note: ''
+		});
+	}
+
+	return { blocks };
 }
