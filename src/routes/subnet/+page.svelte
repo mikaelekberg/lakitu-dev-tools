@@ -10,6 +10,7 @@
 		type ParsedCIDR,
 		type SubnetBlock
 	} from '$lib/utils/subnet';
+	import { Split, Merge } from 'lucide-svelte';
 
 	let input = $state('');
 	let result = $state<ParsedCIDR | null>(null);
@@ -63,16 +64,11 @@
 
 	// Partition tab state
 	let supernetCidr = $state('');
-	let supernetTotalHosts = $state(0);
+	let startingPrefix = $state<number | null>(null);
 	let blocks = $state<SubnetBlock[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
 	let editingNoteIndex = $state<number | null>(null);
-
-	function barPct(block: SubnetBlock): number {
-		if (supernetTotalHosts === 0) return 0;
-		return (block.totalHosts / supernetTotalHosts) * 100;
-	}
 
 	function canUnmerge(splitFrom: string): boolean {
 		if (!splitFrom) return false;
@@ -101,49 +97,67 @@
 			return;
 		}
 
-		const blockSize = 2 ** (32 - parsed.prefix);
-		let usableRange: string;
-		let usableHosts: number;
-		if (parsed.prefix === 32) {
-			usableRange = ipToString(parsed.network);
-			usableHosts = 1;
-		} else if (parsed.prefix === 31) {
-			usableRange = `${ipToString(parsed.network)} - ${ipToString(parsed.broadcast)}`;
-			usableHosts = 2;
-		} else {
-			usableRange = `${ipToString(parsed.network + 1)} - ${ipToString(parsed.broadcast - 1)}`;
-			usableHosts = blockSize - 2;
-		}
-
-		supernetTotalHosts = blockSize;
-		blocks = [
-			{
-				network: parsed.network,
-				cidr: parsed.cidrStr,
-				networkAddress: ipToString(parsed.network),
-				broadcastAddress: ipToString(parsed.broadcast),
-				usableRange,
-				totalHosts: blockSize,
-				usableHosts,
-				prefix: parsed.prefix,
-				isAllocated: false,
-				color: getColorForNetwork(parsed.network, parsed.prefix),
-				note: '',
-				depth: 0,
-				splitFrom: ''
-			}
-		];
-	}
-
-	function handleSplit(index: number, targetPrefix: number) {
-		partitionError = null;
-
-		const parent = blocks[index];
-		if (targetPrefix <= parent.prefix) {
-			partitionError = `Target prefix (/${targetPrefix}) must be larger than /${parent.prefix}.`;
+		const targetPrefix = startingPrefix ?? parsed.prefix;
+		if (targetPrefix < parsed.prefix || targetPrefix > 32) {
+			partitionError = `Starting prefix (/${targetPrefix}) must be between /${parsed.prefix} and /32.`;
 			return;
 		}
 
+		const totalBlocks = 2 ** (targetPrefix - parsed.prefix);
+		if (totalBlocks > DISPLAY_LIMIT) {
+			partitionWarning = `This split would produce ${totalBlocks.toLocaleString()} blocks, exceeding the ${DISPLAY_LIMIT} display limit. Use a larger starting prefix or a smaller supernet.`;
+			return;
+		}
+
+		if (targetPrefix === parsed.prefix) {
+			const blockSize = 2 ** (32 - parsed.prefix);
+			let usableRange: string;
+			let usableHosts: number;
+			if (parsed.prefix === 32) {
+				usableRange = ipToString(parsed.network);
+				usableHosts = 1;
+			} else if (parsed.prefix === 31) {
+				usableRange = `${ipToString(parsed.network)} - ${ipToString(parsed.broadcast)}`;
+				usableHosts = 2;
+			} else {
+				usableRange = `${ipToString(parsed.network + 1)} - ${ipToString(parsed.broadcast - 1)}`;
+				usableHosts = blockSize - 2;
+			}
+
+			blocks = [
+				{
+					network: parsed.network,
+					cidr: parsed.cidrStr,
+					networkAddress: ipToString(parsed.network),
+					broadcastAddress: ipToString(parsed.broadcast),
+					usableRange,
+					totalHosts: blockSize,
+					usableHosts,
+					prefix: parsed.prefix,
+					color: getColorForNetwork(parsed.network, parsed.prefix),
+					note: '',
+					depth: 0,
+					splitFrom: '',
+					parentSplitFrom: ''
+				}
+			];
+		} else {
+			const result = splitBlock(parsed.network, parsed.prefix, targetPrefix, 0, parsed.cidrStr, '');
+			if (result.error) {
+				partitionError = result.error;
+				return;
+			}
+			blocks = result.blocks;
+		}
+	}
+
+	function handleSplit(index: number) {
+		partitionError = null;
+
+		const parent = blocks[index];
+		if (parent.prefix >= 32) return;
+
+		const targetPrefix = parent.prefix + 1;
 		const newCount = 2 ** (targetPrefix - parent.prefix);
 		const totalAfter = blocks.length - 1 + newCount;
 		if (totalAfter > DISPLAY_LIMIT) {
@@ -156,7 +170,8 @@
 			parent.prefix,
 			targetPrefix,
 			parent.depth,
-			parent.cidr
+			parent.cidr,
+			parent.splitFrom
 		);
 		if (result.error) {
 			partitionError = result.error;
@@ -166,17 +181,12 @@
 		if (parent.note) {
 			result.blocks[0].note = parent.note;
 		}
-		if (parent.isAllocated) {
-			for (const b of result.blocks) {
-				b.isAllocated = true;
-			}
-		}
 
 		blocks = [...blocks.slice(0, index), ...result.blocks, ...blocks.slice(index + 1)];
 		partitionWarning = null;
 	}
 
-	function handleUnmerge(splitFrom: string) {
+	function handleMerge(splitFrom: string) {
 		partitionError = null;
 		partitionWarning = null;
 
@@ -185,7 +195,7 @@
 
 		const parent = unsplit(splitFrom, children);
 		if (!parent) {
-			partitionWarning = 'Cannot unmerge; sibling blocks no longer cover the full parent range.';
+			partitionWarning = 'Cannot merge; sibling blocks no longer cover the full parent range.';
 			return;
 		}
 
@@ -194,29 +204,13 @@
 		blocks = [...blocks.slice(0, firstChildIdx), parent, ...blocks.slice(lastChildIdx + 1)];
 	}
 
-	function toggleAllocated(index: number) {
-		blocks = blocks.map((b, i) => (i === index ? { ...b, isAllocated: !b.isAllocated } : b));
-	}
-
 	function handleNoteChange(index: number, note: string) {
 		blocks = blocks.map((b, i) => (i === index ? { ...b, note } : b));
 	}
 
-	function handleSelectAll() {
-		partitionError = null;
-		partitionWarning = null;
-		blocks = blocks.map((b) => ({ ...b, isAllocated: true }));
-	}
-
-	function handleClearAllocated() {
-		partitionError = null;
-		partitionWarning = null;
-		blocks = blocks.map((b) => ({ ...b, isAllocated: false }));
-	}
-
 	function handlePartitionClear() {
 		supernetCidr = '';
-		supernetTotalHosts = 0;
+		startingPrefix = null;
 		blocks = [];
 		partitionError = null;
 		partitionWarning = null;
@@ -463,55 +457,37 @@
 		<!-- Partition Input Section -->
 		<div class="card bg-base-200 mb-6">
 			<div class="card-body">
-				<fieldset class="fieldset">
-					<legend class="fieldset-legend">Supernet CIDR</legend>
-					<input
-						type="text"
-						class="input input-bordered w-full font-mono"
-						placeholder="10.0.0.0/16"
-						bind:value={supernetCidr}
-						onkeydown={handlePartitionKeydown}
-					/>
-				</fieldset>
+				<div class="flex flex-wrap gap-3 items-end">
+					<fieldset class="fieldset flex-1 min-w-48">
+						<legend class="fieldset-legend">Supernet CIDR</legend>
+						<input
+							type="text"
+							class="input input-bordered w-full font-mono"
+							placeholder="10.0.0.0/16"
+							bind:value={supernetCidr}
+							onkeydown={handlePartitionKeydown}
+						/>
+					</fieldset>
+					<fieldset class="fieldset w-36">
+						<legend class="fieldset-legend">Starting prefix</legend>
+						<input
+							type="number"
+							class="input input-bordered w-full"
+							placeholder="optional"
+							min="0"
+							max="32"
+							bind:value={startingPrefix}
+							onkeydown={handlePartitionKeydown}
+						/>
+					</fieldset>
+				</div>
 				<p class="text-xs text-base-content/60 mt-2">
-					Load a supernet, then split any subnet into smaller blocks. Unmerge siblings to combine
-					them back. Add notes to document each subnet.
+					Load a supernet, optionally pre-split to a starting prefix. Then split (prefix+1) or merge
+					(prefix-1) individual subnets. Add notes with the pencil icon.
 				</p>
 				<div class="flex flex-wrap gap-3 mt-4">
-					<button class="btn btn-primary" onclick={handleLoad}>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5 mr-1"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-							/>
-						</svg>
-						Load
-					</button>
-					<button class="btn btn-ghost" onclick={handlePartitionClear}>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5 mr-1"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-							/>
-						</svg>
-						Clear
-					</button>
+					<button class="btn btn-primary" onclick={handleLoad}>Load</button>
+					<button class="btn btn-ghost" onclick={handlePartitionClear}>Clear</button>
 				</div>
 			</div>
 		</div>
@@ -523,7 +499,6 @@
 					class="stroke-current shrink-0 h-6 w-6"
 					fill="none"
 					viewBox="0 0 24 24"
-					stroke="currentColor"
 				>
 					<path
 						stroke-linecap="round"
@@ -557,69 +532,38 @@
 		{/if}
 
 		{#if blocks.length > 0}
-			<div class="flex flex-wrap gap-3 mb-4 items-center">
-				<button class="btn btn-sm btn-outline btn-primary" onclick={handleSelectAll}>
-					Select All
-				</button>
-				<button class="btn btn-sm btn-outline btn-ghost" onclick={handleClearAllocated}>
-					Clear All
-				</button>
-				<span class="text-sm text-base-content/70 ml-2">
-					{blocks.filter((b) => b.isAllocated).length} of {blocks.length} blocks allocated
-				</span>
+			<div class="text-sm text-base-content/50 mb-2">
+				{blocks.length} block{blocks.length !== 1 ? 's' : ''}
 			</div>
 
-			<!-- Column headers -->
-			<div
-				class="hidden sm:flex items-center gap-3 text-xs text-base-content/50 font-medium px-1 pb-1 border-b border-base-content/10 mb-1"
-			>
-				<div class="w-20 shrink-0">Size</div>
-				<div class="w-40 shrink-0">Subnet</div>
-				<div class="flex-1">Details</div>
-				<div class="w-52 shrink-0 text-right">Actions</div>
-			</div>
-
-			<!-- Block rows -->
 			<div class="flex flex-col gap-px">
 				{#each blocks as block, i (block.cidr + '-' + i)}
 					<div
-						class="flex items-center gap-3 px-1 py-2 rounded hover:bg-base-300/40 transition-colors {block.isAllocated
-							? 'ring-2 ring-primary ring-inset'
-							: ''}"
+						class="flex items-center gap-3 px-2 py-2 rounded hover:bg-base-300/30 transition-colors"
 					>
-						<!-- proportional size bar -->
-						<div class="w-20 h-6 bg-base-content/10 rounded overflow-hidden shrink-0">
-							<div
-								class="h-full {block.color} rounded transition-all"
-								style="width: {Math.max(barPct(block), 2)}%"
-							></div>
-						</div>
+						<div class="w-1 self-stretch rounded shrink-0 {block.color}"></div>
 
-						<!-- CIDR -->
-						<div class="w-40 shrink-0">
-							<div class="font-mono text-sm font-medium">{block.cidr}</div>
-						</div>
-
-						<!-- details -->
 						<div class="flex-1 min-w-0">
-							<div class="text-xs text-base-content/70 truncate">
-								{block.usableHosts.toLocaleString()} hosts
-								<span class="mx-1">·</span>
-								<span class="font-mono">{block.usableRange}</span>
+							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+								<span class="font-mono text-sm font-medium">{block.cidr}</span>
+								<span class="text-xs text-base-content/50">
+									{block.usableHosts.toLocaleString()} hosts
+								</span>
+								<span class="text-xs text-base-content/40 font-mono">
+									{block.usableRange}
+								</span>
 							</div>
-							<!-- split from -->
-							<div class="text-xs text-base-content/40 mt-0.5">
+							<div class="text-xs text-base-content/40">
 								{#if block.splitFrom}
 									<span class="font-mono">from {block.splitFrom}</span>
 								{:else}
 									<span class="italic">root</span>
 								{/if}
 								{#if block.depth > 0}
-									<span class="ml-1 opacity-50">(depth {block.depth})</span>
+									<span class="ml-1 opacity-50">(d{block.depth})</span>
 								{/if}
 							</div>
 
-							<!-- note display (when not editing) -->
 							{#if block.note && editingNoteIndex !== i}
 								<div
 									class="text-xs text-base-content/50 mt-0.5 italic border-l-2 border-base-content/20 pl-2 truncate"
@@ -628,7 +572,6 @@
 								</div>
 							{/if}
 
-							<!-- note editor -->
 							{#if editingNoteIndex === i}
 								<textarea
 									class="textarea textarea-bordered textarea-xs w-full mt-1"
@@ -640,53 +583,27 @@
 							{/if}
 						</div>
 
-						<!-- actions -->
-						<div class="w-52 shrink-0 flex flex-wrap gap-1 justify-end">
+						<div class="flex items-center gap-1 shrink-0">
 							{#if canUnmerge(block.splitFrom)}
 								<button
-									class="btn btn-xs btn-outline btn-warning"
-									onclick={() => handleUnmerge(block.splitFrom)}
-									title="Merge {block.splitFrom} back together"
+									class="btn btn-xs btn-ghost"
+									title="Merge siblings back to {block.splitFrom}"
+									onclick={() => handleMerge(block.splitFrom)}
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										class="h-3 w-3"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"
-										/>
-									</svg>
+									<Merge class="h-3.5 w-3.5" />
+									<span class="text-xs ml-1">Merge</span>
 								</button>
 							{/if}
-
 							{#if block.prefix < 32}
-								<select
-									class="select select-xs select-bordered"
-									aria-label="Split {block.cidr}"
-									onchange={(e) => {
-										const v = e.currentTarget.value;
-										const target = parseInt(v, 10);
-										e.currentTarget.value = '';
-										if (!isNaN(target) && target > block.prefix) {
-											handleSplit(i, target);
-										}
-									}}
+								<button
+									class="btn btn-xs btn-ghost"
+									title="Split to /{block.prefix + 1}"
+									onclick={() => handleSplit(i)}
 								>
-									<option value="">Split…</option>
-									{#each Array.from({ length: 32 - block.prefix }, (_, k) => block.prefix + 1 + k) as targetPrefix}
-										<option value={targetPrefix}>
-											/{targetPrefix}
-										</option>
-									{/each}
-								</select>
+									<Split class="h-3.5 w-3.5" />
+									<span class="text-xs ml-1">Split</span>
+								</button>
 							{/if}
-
 							<button
 								class="btn btn-xs btn-ghost"
 								aria-label={editingNoteIndex === i ? 'Close note' : 'Edit note'}
@@ -716,28 +633,6 @@
 									{/if}
 								</svg>
 							</button>
-
-							<button
-								class="btn btn-xs btn-ghost"
-								aria-label="Toggle allocated"
-								aria-pressed={block.isAllocated}
-								onclick={() => toggleAllocated(i)}
-							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									class="h-3.5 w-3.5"
-									fill={block.isAllocated ? 'currentColor' : 'none'}
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-									/>
-								</svg>
-							</button>
 						</div>
 					</div>
 				{/each}
@@ -745,20 +640,6 @@
 		{:else if !partitionError}
 			<div class="card bg-base-200">
 				<div class="card-body text-center py-12">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-12 w-12 mx-auto mb-4 text-base-content/30"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-						/>
-					</svg>
 					<p class="text-base-content/50">Enter a supernet CIDR and click Load to begin.</p>
 				</div>
 			</div>

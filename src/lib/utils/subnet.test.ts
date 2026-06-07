@@ -256,11 +256,11 @@ describe('partitionSubnet', () => {
 	});
 
 	it('caps the result at DISPLAY_LIMIT for very large partitions', () => {
-		// 10.0.0.0/16 partitioned into /25 = 2^(25-16) = 512 subnets
-		const { subnets, error } = partitionSubnet('10.0.0.0/16', 25);
+		// 10.0.0.0/16 partitioned into /27 = 2^(27-16) = 2048 subnets
+		const { subnets, error } = partitionSubnet('10.0.0.0/16', 27);
 		expect(error).toBeUndefined();
 		expect(subnets).toHaveLength(DISPLAY_LIMIT);
-		expect(DISPLAY_LIMIT).toBe(256);
+		expect(DISPLAY_LIMIT).toBe(1024);
 	});
 
 	it('returns an error when target prefix is smaller than supernet prefix', () => {
@@ -389,10 +389,9 @@ describe('splitBlock', () => {
 		expect(blocks[3].cidr).toBe('10.0.0.3/32');
 	});
 
-	it('returns blocks with empty notes and unallocated state', () => {
+	it('returns blocks with empty notes', () => {
 		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25);
 		expect(blocks[0].note).toBe('');
-		expect(blocks[0].isAllocated).toBe(false);
 	});
 
 	it('assigns distinct colors to adjacent sub-blocks', () => {
@@ -456,21 +455,6 @@ describe('unsplit', () => {
 		children[1].note = 'second child note';
 		const parent = unsplit('10.0.0.0/24', children);
 		expect(parent!.note).toBe('second child note');
-	});
-
-	it('marks parent allocated when all children are allocated', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		children[0].isAllocated = true;
-		children[1].isAllocated = true;
-		const parent = unsplit('10.0.0.0/24', children);
-		expect(parent!.isAllocated).toBe(true);
-	});
-
-	it('does not mark parent allocated when some children are not', () => {
-		const children = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		children[0].isAllocated = true;
-		const parent = unsplit('10.0.0.0/24', children);
-		expect(parent!.isAllocated).toBe(false);
 	});
 
 	it('returns null when children do not cover the full parent range', () => {

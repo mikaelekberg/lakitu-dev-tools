@@ -37,14 +37,14 @@ export interface SubnetBlock {
 	totalHosts: number;
 	usableHosts: number;
 	prefix: number;
-	isAllocated: boolean;
 	color: string;
 	note: string;
 	depth: number; // 0 = root block, 1+ = splits from root
 	splitFrom: string; // parent CIDR, '' for root
+	parentSplitFrom: string; // grandparent CIDR, restored on unsplit
 }
 
-export const DISPLAY_LIMIT = 256;
+export const DISPLAY_LIMIT = 1024;
 
 const SUBNET_COLORS = [
 	'bg-primary/30',
@@ -263,13 +263,15 @@ export function partitionSubnet(
  * @param targetPrefix  - The desired child prefix length (must be > currentPrefix and <= 32)
  * @param parentDepth   - The parent block's depth (0 = root)
  * @param parentCidr    - The parent block's CIDR (e.g. "10.0.0.0/24")
+ * @param parentSplitFrom - The parent block's splitFrom (to restore on unsplit)
  */
 export function splitBlock(
 	network: number,
 	currentPrefix: number,
 	targetPrefix: number,
 	parentDepth: number = 0,
-	parentCidr: string = ''
+	parentCidr: string = '',
+	parentSplitFrom: string = ''
 ): { blocks: SubnetBlock[]; error?: string } {
 	if (targetPrefix <= currentPrefix) {
 		return {
@@ -318,11 +320,11 @@ export function splitBlock(
 			totalHosts: blockSize,
 			usableHosts,
 			prefix: targetPrefix,
-			isAllocated: false,
 			color: getColorForNetwork(childNetwork, targetPrefix),
 			note: '',
 			depth: parentDepth + 1,
-			splitFrom: parentCidr
+			splitFrom: parentCidr,
+			parentSplitFrom
 		});
 	}
 
@@ -366,9 +368,9 @@ export function unsplit(parentCidr: string, children: SubnetBlock[]): SubnetBloc
 		usableHosts = blockSize - 2;
 	}
 
-	const allAllocated = children.every((c) => c.isAllocated);
 	const firstNote = children.find((c) => c.note)?.note ?? '';
 	const depth = children[0].depth - 1;
+	const splitFrom = children[0].parentSplitFrom;
 
 	return {
 		network: parsed.network,
@@ -379,10 +381,10 @@ export function unsplit(parentCidr: string, children: SubnetBlock[]): SubnetBloc
 		totalHosts: blockSize,
 		usableHosts,
 		prefix: parsed.prefix,
-		isAllocated: allAllocated,
 		color: getColorForNetwork(parsed.network, parsed.prefix),
 		note: firstNote,
 		depth,
-		splitFrom: ''
+		splitFrom,
+		parentSplitFrom: splitFrom
 	};
 }
