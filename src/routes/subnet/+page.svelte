@@ -78,10 +78,6 @@
 		return Math.min(a.network, b.network) % mergedSize === 0;
 	}
 
-	function isInMergePair(i: number): boolean {
-		return canMergeWithNext(i) || (i > 0 && canMergeWithNext(i - 1));
-	}
-
 	function handleLoad() {
 		partitionError = null;
 		partitionWarning = null;
@@ -547,66 +543,138 @@
 			</div>
 
 			<div
-				class="hidden sm:grid grid-cols-[4px_100px_60px_1fr_36px_36px] items-center gap-3 px-2 pb-1 text-xs text-base-content/50 font-medium"
+				class="hidden sm:grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 pb-1 text-xs text-base-content/50 font-medium"
 			>
 				<div></div>
 				<div>CIDR</div>
 				<div class="text-right">Hosts</div>
 				<div>Range</div>
+				<div>Note</div>
 				<div></div>
 				<div></div>
 			</div>
 
 			{#each blocks as block, i (block.cidr + '-' + i)}
-				<div
-					class="grid grid-cols-[4px_100px_60px_1fr_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors {isInMergePair(
-						i
-					)
-						? 'bg-base-200/40'
-						: 'hover:bg-base-300/30'}"
-				>
-					<div class="w-1 self-stretch rounded {block.color}"></div>
-					<div class="font-mono text-sm font-medium">{block.cidr}</div>
-					<div class="text-sm tabular-nums text-right text-base-content/80">
-						{block.usableHosts.toLocaleString()}
-					</div>
-					<div class="text-sm font-mono truncate text-base-content/80">
-						{block.usableRange}
-					</div>
-					{#if block.prefix < 32}
-						<button
-							class="btn btn-xs btn-ghost"
-							title="Split to /{block.prefix + 1}"
-							onclick={() => handleSplit(i)}
-						>
-							<Split class="h-3.5 w-3.5" />
-						</button>
-					{:else}
-						<div></div>
-					{/if}
-					{#if canMergeWithNext(i)}
-						<button
-							class="btn btn-xs btn-ghost"
-							title="Merge with next subnet"
-							onclick={() => handleMerge(i)}
-						>
-							<Merge class="h-3.5 w-3.5" />
-						</button>
-					{:else}
-						<div></div>
-					{/if}
-				</div>
+				{@const next = blocks[i + 1]}
 
-				<div class="grid grid-cols-[4px_100px_60px_1fr_36px_36px] gap-3 px-2 pb-1">
-					<div></div>
-					<input
-						type="text"
-						class="input input-xs input-ghost col-span-5 text-xs"
-						placeholder="add a note…"
-						value={block.note}
-						oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
-					/>
-				</div>
+				{#if canMergeWithNext(i)}
+					<div class="border-l-4 {block.color} pl-3 -ml-1 space-y-px">
+						<div
+							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors bg-base-200/40"
+						>
+							<div class="w-1 self-stretch rounded {block.color}"></div>
+							<div class="font-mono text-sm font-medium">{block.cidr}</div>
+							<div class="text-sm tabular-nums text-right text-base-content/80">
+								{block.usableHosts.toLocaleString()}
+							</div>
+							<div class="text-sm font-mono truncate text-base-content/80">
+								{block.usableRange}
+							</div>
+							<input
+								type="text"
+								class="input input-xs input-ghost text-xs"
+								placeholder="add a note…"
+								value={block.note}
+								oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
+							/>
+							{#if block.prefix < 32}
+								<button
+									class="btn btn-xs btn-ghost"
+									title="Split to /{block.prefix + 1}"
+									onclick={() => handleSplit(i)}
+								>
+									<Split class="h-3.5 w-3.5" />
+								</button>
+							{:else}
+								<div></div>
+							{/if}
+							<button
+								class="btn btn-xs btn-ghost"
+								title="Merge with next subnet"
+								onclick={() => handleMerge(i)}
+							>
+								<Merge class="h-3.5 w-3.5" />
+							</button>
+						</div>
+						{#if next}
+							<div
+								class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors bg-base-200/40"
+							>
+								<div class="w-1 self-stretch rounded {next.color}"></div>
+								<div class="font-mono text-sm font-medium">{next.cidr}</div>
+								<div class="text-sm tabular-nums text-right text-base-content/80">
+									{next.usableHosts.toLocaleString()}
+								</div>
+								<div class="text-sm font-mono truncate text-base-content/80">
+									{next.usableRange}
+								</div>
+								<input
+									type="text"
+									class="input input-xs input-ghost text-xs"
+									placeholder="add a note…"
+									value={next.note}
+									oninput={(e) => handleNoteChange(i + 1, e.currentTarget.value)}
+								/>
+								{#if next.prefix < 32}
+									<button
+										class="btn btn-xs btn-ghost"
+										title="Split to /{next.prefix + 1}"
+										onclick={() => handleSplit(i + 1)}
+									>
+										<Split class="h-3.5 w-3.5" />
+									</button>
+								{:else}
+									<div></div>
+								{/if}
+								{#if canMergeWithNext(i + 1)}
+									<button
+										class="btn btn-xs btn-ghost"
+										title="Merge with next subnet"
+										onclick={() => handleMerge(i + 1)}
+									>
+										<Merge class="h-3.5 w-3.5" />
+									</button>
+								{:else}
+									<div></div>
+								{/if}
+							</div>
+						{/if}
+					</div>
+				{:else if i > 0 && canMergeWithNext(i - 1)}
+					<!-- already rendered as part of a pair above -->
+				{:else}
+					<div
+						class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
+					>
+						<div class="w-1 self-stretch rounded {block.color}"></div>
+						<div class="font-mono text-sm font-medium">{block.cidr}</div>
+						<div class="text-sm tabular-nums text-right text-base-content/80">
+							{block.usableHosts.toLocaleString()}
+						</div>
+						<div class="text-sm font-mono truncate text-base-content/80">
+							{block.usableRange}
+						</div>
+						<input
+							type="text"
+							class="input input-xs input-ghost text-xs"
+							placeholder="add a note…"
+							value={block.note}
+							oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
+						/>
+						{#if block.prefix < 32}
+							<button
+								class="btn btn-xs btn-ghost"
+								title="Split to /{block.prefix + 1}"
+								onclick={() => handleSplit(i)}
+							>
+								<Split class="h-3.5 w-3.5" />
+							</button>
+						{:else}
+							<div></div>
+						{/if}
+						<div></div>
+					</div>
+				{/if}
 			{/each}
 		{:else if !partitionError}
 			<div class="card bg-base-200">
