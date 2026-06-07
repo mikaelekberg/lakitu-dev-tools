@@ -69,24 +69,13 @@
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
 
-	function canMerge(index: number): boolean {
-		const block = blocks[index];
-		if (block.prefix === 0) return false;
-		const childSize = 2 ** (32 - block.prefix);
+	function canMergeWithNext(i: number): boolean {
+		const a = blocks[i];
+		const b = blocks[i + 1];
+		if (!b || a.prefix !== b.prefix || a.prefix === 0) return false;
+		const childSize = 2 ** (32 - a.prefix);
 		const mergedSize = childSize * 2;
-		if (
-			index + 1 < blocks.length &&
-			blocks[index + 1].prefix === block.prefix &&
-			block.network % mergedSize === 0
-		)
-			return true;
-		if (
-			index - 1 >= 0 &&
-			blocks[index - 1].prefix === block.prefix &&
-			blocks[index - 1].network % mergedSize === 0
-		)
-			return true;
-		return false;
+		return Math.min(a.network, b.network) % mergedSize === 0;
 	}
 
 	function handleLoad() {
@@ -553,56 +542,65 @@
 				{blocks.length} block{blocks.length !== 1 ? 's' : ''}
 			</div>
 
-			<div class="flex flex-col gap-px">
-				{#each blocks as block, i (block.cidr + '-' + i)}
-					<div
-						class="flex items-center gap-3 px-2 py-2 rounded hover:bg-base-300/30 transition-colors"
-					>
-						<div class="w-1 self-stretch rounded shrink-0 {block.color}"></div>
+			<div
+				class="hidden sm:grid grid-cols-[4px_120px_80px_1fr_60px] items-center gap-3 px-2 pb-1 text-xs text-base-content/50 font-medium border-b border-base-content/10 mb-px"
+			>
+				<div></div>
+				<div>CIDR</div>
+				<div class="text-right">Hosts</div>
+				<div>Range</div>
+				<div class="text-right">Actions</div>
+			</div>
 
-						<div class="flex-1 min-w-0">
-							<div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-								<span class="font-mono text-sm font-medium">{block.cidr}</span>
-								<span class="text-xs text-base-content/50">
-									{block.usableHosts.toLocaleString()} hosts
-								</span>
-								<span class="text-xs text-base-content/40 font-mono">
-									{block.usableRange}
-								</span>
-							</div>
+			{#each blocks as block, i (block.cidr + '-' + i)}
+				<div
+					class="grid grid-cols-[4px_120px_80px_1fr_60px] items-center gap-3 px-2 py-2 rounded hover:bg-base-300/30 transition-colors"
+				>
+					<div class="w-1 self-stretch rounded {block.color}"></div>
+					<div class="font-mono text-sm font-medium">{block.cidr}</div>
+					<div class="text-sm tabular-nums text-right text-base-content/80">
+						{block.usableHosts.toLocaleString()}
+					</div>
+					<div class="text-sm font-mono truncate text-base-content/80">{block.usableRange}</div>
+					<div class="flex items-center justify-end gap-1">
+						{#if block.prefix < 32}
+							<button
+								class="btn btn-xs btn-ghost"
+								title="Split to /{block.prefix + 1}"
+								onclick={() => handleSplit(i)}
+							>
+								<Split class="h-3.5 w-3.5" />
+							</button>
+						{/if}
+					</div>
+				</div>
 
-							<input
-								type="text"
-								class="input input-xs input-ghost w-full mt-0.5 text-xs"
-								placeholder="add a note…"
-								value={block.note}
-								oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
-							/>
-						</div>
+				<div class="grid grid-cols-[4px_120px_80px_1fr_60px] gap-3 px-2 pb-1">
+					<div></div>
+					<input
+						type="text"
+						class="input input-xs input-ghost col-span-4 text-xs"
+						placeholder="add a note…"
+						value={block.note}
+						oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
+					/>
+				</div>
 
-						<div class="flex items-center gap-1 shrink-0">
-							{#if canMerge(i)}
-								<button
-									class="btn btn-xs btn-ghost"
-									title="Merge with adjacent subnet"
-									onclick={() => handleMerge(i)}
-								>
-									<Merge class="h-3.5 w-3.5" />
-								</button>
-							{/if}
-							{#if block.prefix < 32}
-								<button
-									class="btn btn-xs btn-ghost"
-									title="Split to /{block.prefix + 1}"
-									onclick={() => handleSplit(i)}
-								>
-									<Split class="h-3.5 w-3.5" />
-								</button>
-							{/if}
+				{#if canMergeWithNext(i)}
+					<div class="grid grid-cols-[4px_120px_80px_1fr_60px] items-center h-5 px-2">
+						<div class="col-span-4 h-px bg-base-content/10"></div>
+						<div class="flex justify-end">
+							<button
+								class="btn btn-xs btn-circle btn-ghost bg-base-100"
+								title="Merge with next subnet"
+								onclick={() => handleMerge(i)}
+							>
+								<Merge class="h-3.5 w-3.5" />
+							</button>
 						</div>
 					</div>
-				{/each}
-			</div>
+				{/if}
+			{/each}
 		{:else if !partitionError}
 			<div class="card bg-base-200">
 				<div class="card-body text-center py-12">
