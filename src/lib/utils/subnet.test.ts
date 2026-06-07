@@ -90,10 +90,19 @@ describe('calculateTotalHosts', () => {
 
 describe('getSubnetColor', () => {
 	it('cycles through the palette', () => {
-		const palette = ['bg-primary/30', 'bg-secondary/30', 'bg-accent/30', 'bg-neutral/30'];
+		const palette = [
+			'bg-primary/30',
+			'bg-secondary/30',
+			'bg-accent/30',
+			'bg-info/30',
+			'bg-success/30',
+			'bg-warning/30',
+			'bg-error/30',
+			'bg-neutral/30'
+		];
 		expect(getSubnetColor(0)).toBe(palette[0]);
-		expect(getSubnetColor(3)).toBe(palette[3]);
-		expect(getSubnetColor(4)).toBe(palette[0]);
+		expect(getSubnetColor(7)).toBe(palette[7]);
+		expect(getSubnetColor(8)).toBe(palette[0]);
 	});
 });
 
@@ -296,18 +305,25 @@ describe('getColorForNetwork', () => {
 		expect(firstChildColor).toStrictEqual(parentColor);
 	});
 
-	it('gives the second child a different color from the first', () => {
+	it('gives both /25 children the same color (pair-friendly formula)', () => {
 		const firstChild = getColorForNetwork(0x0a000000, 25);
 		const secondChild = getColorForNetwork(0x0a000080, 25);
-		expect(secondChild).not.toStrictEqual(firstChild);
+		expect(secondChild).toStrictEqual(firstChild);
+	});
+
+	it('gives different prefix siblings the same color when addresses match', () => {
+		// 10.0.0.0/25 and 10.0.0.0/26 (both at network 10.0.0.0) get the same color
+		const a = getColorForNetwork(0x0a000000, 25);
+		const b = getColorForNetwork(0x0a000000, 26);
+		expect(b).toStrictEqual(a);
 	});
 
 	it('cycles through the palette across many subnets', () => {
 		const colors = new Set<string>();
-		for (let i = 0; i < 4; i++) {
+		for (let i = 0; i < 16; i++) {
 			colors.add(getColorForNetwork(i * 256, 24).bg);
 		}
-		expect(colors.size).toBe(4);
+		expect(colors.size).toBe(8);
 	});
 });
 

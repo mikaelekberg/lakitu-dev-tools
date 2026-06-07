@@ -63,8 +63,9 @@
 	let activeTab = $state<'single' | 'partition'>('single');
 
 	// Partition tab state
-	let supernetCidr = $state('');
-	let startingPrefix = $state<number | null>(null);
+	let supernetIp = $state('10.0.0.0');
+	let supernetPrefix = $state(22);
+	let startingPrefix = $state<number | null>(24);
 	let blocks = $state<SubnetBlock[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
@@ -78,19 +79,31 @@
 		return Math.min(a.network, b.network) % mergedSize === 0;
 	}
 
+	function validStartingPrefixes(): number[] {
+		const result: number[] = [];
+		for (let p = supernetPrefix; p <= 32; p++) result.push(p);
+		return result;
+	}
+
 	function handleLoad() {
 		partitionError = null;
 		partitionWarning = null;
 
-		const trimmed = supernetCidr.trim();
+		const trimmed = supernetIp.trim();
 		if (!trimmed) {
-			partitionError = 'Please enter a supernet CIDR.';
+			partitionError = 'Please enter a supernet IP.';
 			return;
 		}
 
-		const parsed = parseCIDR(trimmed);
+		if (supernetPrefix < 0 || supernetPrefix > 32) {
+			partitionError = `Supernet prefix /${supernetPrefix} is out of range (must be 0-32).`;
+			return;
+		}
+
+		const fullCidr = `${trimmed}/${supernetPrefix}`;
+		const parsed = parseCIDR(fullCidr);
 		if (!parsed) {
-			partitionError = 'Invalid CIDR notation. Please enter a valid CIDR (e.g., 10.0.0.0/16).';
+			partitionError = `Invalid CIDR notation: ${fullCidr}`;
 			return;
 		}
 
@@ -216,8 +229,9 @@
 	}
 
 	function handlePartitionClear() {
-		supernetCidr = '';
-		startingPrefix = null;
+		supernetIp = '10.0.0.0';
+		supernetPrefix = 22;
+		startingPrefix = 24;
 		blocks = [];
 		partitionError = null;
 		partitionWarning = null;
@@ -463,27 +477,33 @@
 		<!-- Partition Input Section -->
 		<div class="card bg-base-200 mb-6">
 			<div class="card-body">
-				<div class="flex flex-wrap gap-3 items-end">
-					<fieldset class="fieldset flex-1 min-w-48">
-						<legend class="fieldset-legend">Supernet CIDR</legend>
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend">Supernet</legend>
+					<div class="flex flex-wrap gap-2 items-center">
 						<input
 							type="text"
-							class="input input-bordered w-full font-mono"
-							placeholder="10.0.0.0/16"
-							bind:value={supernetCidr}
+							class="input input-bordered font-mono flex-1 min-w-32"
+							placeholder="10.0.0.0"
+							bind:value={supernetIp}
 							onkeydown={handlePartitionKeydown}
 						/>
-					</fieldset>
-					<fieldset class="fieldset w-44">
-						<legend class="fieldset-legend">Starting prefix</legend>
-						<select class="select select-bordered w-full" bind:value={startingPrefix}>
-							<option value={null}>Same as supernet</option>
+						<span class="text-base-content/60">/</span>
+						<select class="select select-bordered w-24" bind:value={supernetPrefix}>
 							{#each Array.from({ length: 33 }, (_, k) => k) as p}
 								<option value={p}>/{p}</option>
 							{/each}
 						</select>
-					</fieldset>
-				</div>
+					</div>
+				</fieldset>
+				<fieldset class="fieldset mt-2">
+					<legend class="fieldset-legend">Starting prefix</legend>
+					<select class="select select-bordered w-32" bind:value={startingPrefix}>
+						<option value={null}>Same as supernet</option>
+						{#each validStartingPrefixes() as p}
+							<option value={p}>/{p}</option>
+						{/each}
+					</select>
+				</fieldset>
 				<p class="text-xs text-base-content/60 mt-2">
 					Load a supernet, optionally pre-split to a starting prefix. Then split (prefix+1) or merge
 					(prefix-1) individual subnets. Add notes with the pencil icon.
@@ -555,9 +575,9 @@
 				{@const next = blocks[i + 1]}
 
 				{#if canMergeWithNext(i)}
-					<div class="border-l-4 {block.color.border} pl-3 -ml-1 space-y-px">
+					<div class="border-l-4 {block.color.border} space-y-px">
 						<div
-							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded"
+							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
 						>
 							<div></div>
 							<div class="font-mono text-sm font-medium">{block.cidr}</div>
@@ -595,7 +615,7 @@
 						</div>
 						{#if next}
 							<div
-								class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded"
+								class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
 							>
 								<div></div>
 								<div class="font-mono text-sm font-medium">{next.cidr}</div>

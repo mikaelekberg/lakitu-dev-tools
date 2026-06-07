@@ -52,6 +52,10 @@ const SUBNET_BG_COLORS = [
 	'bg-primary/30',
 	'bg-secondary/30',
 	'bg-accent/30',
+	'bg-info/30',
+	'bg-success/30',
+	'bg-warning/30',
+	'bg-error/30',
 	'bg-neutral/30'
 ] as const;
 
@@ -59,6 +63,10 @@ const SUBNET_BORDER_COLORS = [
 	'border-primary/30',
 	'border-secondary/30',
 	'border-accent/30',
+	'border-info/30',
+	'border-success/30',
+	'border-warning/30',
+	'border-error/30',
 	'border-neutral/30'
 ] as const;
 
@@ -122,7 +130,7 @@ export function getSubnetColor(index: number): string {
  */
 export function getColorForNetwork(network: number, prefix: number): SubnetColors {
 	const blockIndex = Math.floor(network / 2 ** (32 - prefix));
-	const idx = blockIndex % SUBNET_BG_COLORS.length;
+	const idx = Math.floor(blockIndex / 2) % SUBNET_BG_COLORS.length;
 	return { bg: SUBNET_BG_COLORS[idx], border: SUBNET_BORDER_COLORS[idx] };
 }
 
