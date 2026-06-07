@@ -30,11 +30,7 @@
 		const requestId = ++jsonHighlightRequest;
 		const prism = await loadPrism(['json']);
 
-		if (
-			requestId !== jsonHighlightRequest ||
-			jsonInput !== currentJsonInput ||
-			!prism?.languages.json
-		) {
+		if (requestId !== jsonHighlightRequest || jsonInput !== currentJsonInput || !prism?.languages.json) {
 			return;
 		}
 
@@ -54,11 +50,7 @@
 		const requestId = ++yamlHighlightRequest;
 		const prism = await loadPrism(['yaml']);
 
-		if (
-			requestId !== yamlHighlightRequest ||
-			yamlInput !== currentYamlInput ||
-			!prism?.languages.yaml
-		) {
+		if (requestId !== yamlHighlightRequest || yamlInput !== currentYamlInput || !prism?.languages.yaml) {
 			return;
 		}
 

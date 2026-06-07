@@ -21,26 +21,16 @@
 
 	function handleEncode() {
 		error = '';
-		if (!input.trim()) {
-			error = 'Please enter some text to encode.';
-			return;
-		}
-		try {
-			output = encodeBase64(input);
-		} catch (e) {
+		if (!input.trim()) { error = 'Please enter some text to encode.'; return; }
+		try { output = encodeBase64(input); } catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to encode text.';
 		}
 	}
 
 	function handleDecode() {
 		error = '';
-		if (!input.trim()) {
-			error = 'Please enter Base64 text to decode.';
-			return;
-		}
-		try {
-			output = decodeBase64(input);
-		} catch (e) {
+		if (!input.trim()) { error = 'Please enter Base64 text to decode.'; return; }
+		try { output = decodeBase64(input); } catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to decode Base64.';
 		}
 	}
@@ -48,27 +38,13 @@
 	async function handleCopy() {
 		if (!output) return;
 		const success = await copyToClipboard(output);
-		if (success) {
-			copySuccess = true;
-			setTimeout(() => {
-				copySuccess = false;
-			}, 2000);
-		}
+		if (success) { copySuccess = true; setTimeout(() => { copySuccess = false; }, 2000); }
 	}
 
-	function handleClear() {
-		input = '';
-		output = '';
-		error = '';
-		copySuccess = false;
-	}
+	function handleClear() { input = ''; output = ''; error = ''; copySuccess = false; }
 
 	function handleSwap() {
-		if (output) {
-			input = output;
-			output = '';
-			error = '';
-		}
+		if (output) { input = output; output = ''; error = ''; }
 	}
 
 	// ── Image tab ─────────────────────────────────────────────
@@ -126,13 +102,8 @@
 		if (file) processFile(file);
 	}
 
-	function handleDragOver(e: DragEvent) {
-		e.preventDefault();
-		dragOver = true;
-	}
-	function handleDragLeave() {
-		dragOver = false;
-	}
+	function handleDragOver(e: DragEvent) { e.preventDefault(); dragOver = true; }
+	function handleDragLeave() { dragOver = false; }
 
 	function encodedOutput(): string {
 		if (!encodeResult) return '';
@@ -143,22 +114,14 @@
 		const val = encodedOutput();
 		if (!val) return;
 		const success = await copyToClipboard(val);
-		if (success) {
-			imageCopySuccess = true;
-			setTimeout(() => {
-				imageCopySuccess = false;
-			}, 2000);
-		}
+		if (success) { imageCopySuccess = true; setTimeout(() => { imageCopySuccess = false; }, 2000); }
 	}
 
 	function handleImageDecode() {
 		decodeError = '';
 		decodedImageUri = '';
 		decodedMimeType = '';
-		if (!decodeInput.trim()) {
-			decodeError = 'Please paste a Base64 string or data URI.';
-			return;
-		}
+		if (!decodeInput.trim()) { decodeError = 'Please paste a Base64 string or data URI.'; return; }
 		try {
 			const result = decodeBase64ToImage(decodeInput.trim());
 			decodedImageUri = result.dataUri;
@@ -208,49 +171,30 @@
 		<button
 			role="tab"
 			class="tab {activeTab === 'text' ? 'tab-active' : ''}"
-			onclick={() => {
-				activeTab = 'text';
-			}}>Text</button
-		>
+			onclick={() => { activeTab = 'text'; }}
+		>Text</button>
 		<button
 			role="tab"
 			class="tab {activeTab === 'image' ? 'tab-active' : ''}"
-			onclick={() => {
-				activeTab = 'image';
-			}}>Image</button
-		>
+			onclick={() => { activeTab = 'image'; }}
+		>Image</button>
 	</div>
 
 	<!-- ── TEXT TAB ─────────────────────────────────────────── -->
 	{#if activeTab === 'text'}
 		{#if error}
 			<div class="alert alert-error mb-6" role="alert">
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="stroke-current shrink-0 h-6 w-6"
-					fill="none"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-					/>
+				<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
 				</svg>
 				<span>{error}</span>
-				<button class="btn btn-sm btn-ghost" onclick={() => (error = '')} aria-label="Dismiss error"
-					>&times;</button
-				>
+				<button class="btn btn-sm btn-ghost" onclick={() => (error = '')} aria-label="Dismiss error">&times;</button>
 			</div>
 		{/if}
 
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 			<fieldset class="fieldset w-full">
-				<legend class="fieldset-legend"
-					>Input <span class="font-normal text-base-content/50">{input.length} characters</span
-					></legend
-				>
+				<legend class="fieldset-legend">Input <span class="font-normal text-base-content/50">{input.length} characters</span></legend>
 				<textarea
 					class="textarea textarea-bordered h-64 font-mono text-sm w-full"
 					placeholder="Enter text to encode or Base64 to decode..."
@@ -259,10 +203,7 @@
 			</fieldset>
 
 			<fieldset class="fieldset w-full">
-				<legend class="fieldset-legend"
-					>Output <span class="font-normal text-base-content/50">{output.length} characters</span
-					></legend
-				>
+				<legend class="fieldset-legend">Output <span class="font-normal text-base-content/50">{output.length} characters</span></legend>
 				<textarea
 					class="textarea textarea-bordered h-64 font-mono text-sm bg-base-200 w-full"
 					placeholder="Result will appear here..."
@@ -274,105 +215,39 @@
 
 		<div class="flex flex-wrap gap-3 mt-6 justify-center">
 			<button class="btn btn-primary" onclick={handleEncode}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 mr-1"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-					/>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
 				</svg>
 				Encode
 			</button>
 			<button class="btn btn-secondary" onclick={handleDecode}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 mr-1"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"
-					/>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
 				</svg>
 				Decode
 			</button>
 			<button class="btn btn-outline" onclick={handleSwap} disabled={!output}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 mr-1"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
-					/>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
 				</svg>
 				Swap
 			</button>
 			<button class="btn btn-outline" onclick={handleCopy} disabled={!output}>
 				{#if copySuccess}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 mr-1 text-success"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M5 13l4 4L19 7"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 					</svg>
 					Copied!
 				{:else}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 mr-1"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
 					</svg>
 					Copy
 				{/if}
 			</button>
 			<button class="btn btn-ghost" onclick={handleClear}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-5 w-5 mr-1"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-					/>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
 				</svg>
 				Clear
 			</button>
@@ -400,59 +275,29 @@
 		<div class="flex gap-2 mb-6">
 			<button
 				class="btn btn-sm {imageMode === 'encode' ? 'btn-primary' : 'btn-outline'}"
-				onclick={() => {
-					imageMode = 'encode';
-					resetImageTab();
-				}}>Encode (Image → Base64)</button
-			>
+				onclick={() => { imageMode = 'encode'; resetImageTab(); }}
+			>Encode (Image → Base64)</button>
 			<button
 				class="btn btn-sm {imageMode === 'decode' ? 'btn-primary' : 'btn-outline'}"
-				onclick={() => {
-					imageMode = 'decode';
-					resetImageTab();
-				}}>Decode (Base64 → Image)</button
-			>
+				onclick={() => { imageMode = 'decode'; resetImageTab(); }}
+			>Decode (Base64 → Image)</button>
 		</div>
 
 		<!-- ENCODE MODE -->
 		{#if imageMode === 'encode'}
 			{#if imageError}
 				<div class="alert alert-error mb-4" role="alert">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="stroke-current shrink-0 h-6 w-6"
-						fill="none"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
 					<span>{imageError}</span>
-					<button
-						class="btn btn-sm btn-ghost"
-						onclick={() => (imageError = '')}
-						aria-label="Dismiss">&times;</button
-					>
+					<button class="btn btn-sm btn-ghost" onclick={() => (imageError = '')} aria-label="Dismiss">&times;</button>
 				</div>
 			{/if}
 			{#if imageWarning}
 				<div class="alert alert-warning mb-4" role="alert">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="stroke-current shrink-0 h-6 w-6"
-						fill="none"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
 					</svg>
 					<span>{imageWarning}</span>
 				</div>
@@ -469,19 +314,8 @@
 				onclick={() => fileInputEl.click()}
 				onkeydown={(e) => e.key === 'Enter' && fileInputEl.click()}
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					class="h-12 w-12 mx-auto mb-3 text-base-content/40"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="1.5"
-						d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-					/>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
 				</svg>
 				<p class="text-base-content/60 mb-2">Drag & drop an image here, or click to browse</p>
 				<p class="text-base-content/40 text-sm">PNG, JPEG, GIF, WebP, SVG · Max 5 MB recommended</p>
@@ -514,11 +348,7 @@
 				<!-- Options -->
 				<div class="mt-4 flex items-center gap-3">
 					<label class="label cursor-pointer gap-2">
-						<input
-							type="checkbox"
-							class="toggle toggle-sm toggle-primary"
-							bind:checked={includeDataPrefix}
-						/>
+						<input type="checkbox" class="toggle toggle-sm toggle-primary" bind:checked={includeDataPrefix} />
 						<span class="label-text">Include <code>data:</code> URI prefix</span>
 					</label>
 				</div>
@@ -536,53 +366,20 @@
 				<div class="flex gap-3 mt-4">
 					<button class="btn btn-primary" onclick={handleImageCopy}>
 						{#if imageCopySuccess}
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5 mr-1 text-success"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M5 13l4 4L19 7"
-								/>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 							</svg>
 							Copied!
 						{:else}
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5 mr-1"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-								/>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
 							</svg>
 							Copy
 						{/if}
 					</button>
 					<button class="btn btn-ghost" onclick={resetImageTab}>
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5 mr-1"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-							/>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
 						</svg>
 						Clear
 					</button>
@@ -594,25 +391,11 @@
 		{#if imageMode === 'decode'}
 			{#if decodeError}
 				<div class="alert alert-error mb-4" role="alert">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="stroke-current shrink-0 h-6 w-6"
-						fill="none"
-						viewBox="0 0 24 24"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
 					</svg>
 					<span>{decodeError}</span>
-					<button
-						class="btn btn-sm btn-ghost"
-						onclick={() => (decodeError = '')}
-						aria-label="Dismiss">&times;</button
-					>
+					<button class="btn btn-sm btn-ghost" onclick={() => (decodeError = '')} aria-label="Dismiss">&times;</button>
 				</div>
 			{/if}
 
@@ -627,36 +410,14 @@
 
 			<div class="flex gap-3 mt-4">
 				<button class="btn btn-primary" onclick={handleImageDecode}>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 mr-1"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
 					</svg>
 					Preview Image
 				</button>
 				<button class="btn btn-ghost" onclick={resetImageTab}>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-5 w-5 mr-1"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-						/>
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
 					</svg>
 					Clear
 				</button>
@@ -667,31 +428,14 @@
 					<div class="mb-3 flex items-center gap-4">
 						<span class="badge badge-outline font-mono">{decodedMimeType}</span>
 						<button class="btn btn-sm btn-secondary" onclick={handleDownload}>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-4 w-4 mr-1"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-								/>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
 							</svg>
 							Download
 						</button>
 					</div>
-					<div
-						class="border border-base-300 rounded-xl p-4 bg-base-200 flex items-center justify-center min-h-48"
-					>
-						<img
-							src={decodedImageUri}
-							alt="Decoded"
-							class="max-w-full max-h-96 object-contain rounded"
-						/>
+					<div class="border border-base-300 rounded-xl p-4 bg-base-200 flex items-center justify-center min-h-48">
+						<img src={decodedImageUri} alt="Decoded" class="max-w-full max-h-96 object-contain rounded" />
 					</div>
 				</div>
 			{/if}
