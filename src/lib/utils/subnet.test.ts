@@ -293,19 +293,19 @@ describe('getColorForNetwork', () => {
 	it('gives the first child of a split the same color as the parent', () => {
 		const parentColor = getColorForNetwork(0x0a000000, 24);
 		const firstChildColor = getColorForNetwork(0x0a000000, 25);
-		expect(firstChildColor).toBe(parentColor);
+		expect(firstChildColor).toStrictEqual(parentColor);
 	});
 
 	it('gives the second child a different color from the first', () => {
 		const firstChild = getColorForNetwork(0x0a000000, 25);
 		const secondChild = getColorForNetwork(0x0a000080, 25);
-		expect(secondChild).not.toBe(firstChild);
+		expect(secondChild).not.toStrictEqual(firstChild);
 	});
 
 	it('cycles through the palette across many subnets', () => {
 		const colors = new Set<string>();
 		for (let i = 0; i < 4; i++) {
-			colors.add(getColorForNetwork(i * 256, 24));
+			colors.add(getColorForNetwork(i * 256, 24).bg);
 		}
 		expect(colors.size).toBe(4);
 	});
@@ -444,7 +444,7 @@ describe('mergePair', () => {
 			totalHosts: 2 ** 32,
 			usableHosts: 2 ** 32 - 2,
 			prefix: 0,
-			color: 'bg-primary/30',
+			color: { bg: 'bg-primary/30', border: 'border-primary/30' },
 			note: ''
 		};
 		const blockB = { ...blockA };

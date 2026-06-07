@@ -37,13 +37,30 @@ export interface SubnetBlock {
 	totalHosts: number;
 	usableHosts: number;
 	prefix: number;
-	color: string;
+	color: SubnetColors;
 	note: string;
+}
+
+export interface SubnetColors {
+	bg: string;
+	border: string;
 }
 
 export const DISPLAY_LIMIT = 1024;
 
-const SUBNET_COLORS = ['bg-primary/30', 'bg-secondary/30', 'bg-accent/30', 'bg-neutral/30'];
+const SUBNET_BG_COLORS = [
+	'bg-primary/30',
+	'bg-secondary/30',
+	'bg-accent/30',
+	'bg-neutral/30'
+] as const;
+
+const SUBNET_BORDER_COLORS = [
+	'border-primary/30',
+	'border-secondary/30',
+	'border-accent/30',
+	'border-neutral/30'
+] as const;
 
 /**
  * Converts a 32-bit unsigned integer to dotted-decimal notation.
@@ -95,7 +112,7 @@ export function calculateTotalHosts(prefix: number): number {
  * Returns a Tailwind background colour class for a subnet at the given index.
  */
 export function getSubnetColor(index: number): string {
-	return SUBNET_COLORS[index % SUBNET_COLORS.length];
+	return SUBNET_BG_COLORS[index % SUBNET_BG_COLORS.length];
 }
 
 /**
@@ -103,9 +120,10 @@ export function getSubnetColor(index: number): string {
  * Color is derived from the block's position within its supernet, so adjacent
  * blocks of equal size always get distinct colors.
  */
-export function getColorForNetwork(network: number, prefix: number): string {
+export function getColorForNetwork(network: number, prefix: number): SubnetColors {
 	const blockIndex = Math.floor(network / 2 ** (32 - prefix));
-	return SUBNET_COLORS[blockIndex % SUBNET_COLORS.length];
+	const idx = blockIndex % SUBNET_BG_COLORS.length;
+	return { bg: SUBNET_BG_COLORS[idx], border: SUBNET_BORDER_COLORS[idx] };
 }
 
 /**

@@ -555,7 +555,7 @@
 				{@const next = blocks[i + 1]}
 
 				{#if canMergeWithNext(i)}
-					<div class="border-l-4 {block.color} pl-3 -ml-1 space-y-px">
+					<div class="border-l-4 {block.color.border} pl-3 -ml-1 space-y-px">
 						<div
 							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded"
 						>
@@ -643,7 +643,7 @@
 					<div
 						class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
 					>
-						<div class="w-1 self-stretch rounded {block.color}"></div>
+						<div class="w-1 self-stretch rounded {block.color.bg}"></div>
 						<div class="font-mono text-sm font-medium">{block.cidr}</div>
 						<div class="text-sm tabular-nums text-right text-base-content/80">
 							{block.usableHosts.toLocaleString()}
