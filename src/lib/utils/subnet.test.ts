@@ -90,19 +90,10 @@ describe('calculateTotalHosts', () => {
 
 describe('getSubnetColor', () => {
 	it('cycles through the palette', () => {
-		const palette = [
-			'bg-primary/30',
-			'bg-secondary/30',
-			'bg-accent/30',
-			'bg-info/30',
-			'bg-success/30',
-			'bg-warning/30',
-			'bg-error/30',
-			'bg-neutral/30'
-		];
+		const palette = ['bg-primary/30', 'bg-secondary/30', 'bg-accent/30', 'bg-neutral/30'];
 		expect(getSubnetColor(0)).toBe(palette[0]);
-		expect(getSubnetColor(7)).toBe(palette[7]);
-		expect(getSubnetColor(8)).toBe(palette[0]);
+		expect(getSubnetColor(3)).toBe(palette[3]);
+		expect(getSubnetColor(4)).toBe(palette[0]);
 	});
 });
 
@@ -313,10 +304,10 @@ describe('getColorForNetwork', () => {
 
 	it('cycles through the palette across many subnets', () => {
 		const colors = new Set<string>();
-		for (let i = 0; i < 8; i++) {
+		for (let i = 0; i < 4; i++) {
 			colors.add(getColorForNetwork(i * 256, 24));
 		}
-		expect(colors.size).toBe(8);
+		expect(colors.size).toBe(4);
 	});
 });
 

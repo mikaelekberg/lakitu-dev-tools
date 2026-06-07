@@ -43,16 +43,7 @@ export interface SubnetBlock {
 
 export const DISPLAY_LIMIT = 1024;
 
-const SUBNET_COLORS = [
-	'bg-primary/30',
-	'bg-secondary/30',
-	'bg-accent/30',
-	'bg-info/30',
-	'bg-success/30',
-	'bg-warning/30',
-	'bg-error/30',
-	'bg-neutral/30'
-];
+const SUBNET_COLORS = ['bg-primary/30', 'bg-secondary/30', 'bg-accent/30', 'bg-neutral/30'];
 
 /**
  * Converts a 32-bit unsigned integer to dotted-decimal notation.

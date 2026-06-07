@@ -474,17 +474,14 @@
 							onkeydown={handlePartitionKeydown}
 						/>
 					</fieldset>
-					<fieldset class="fieldset w-36">
+					<fieldset class="fieldset w-44">
 						<legend class="fieldset-legend">Starting prefix</legend>
-						<input
-							type="number"
-							class="input input-bordered w-full"
-							placeholder="optional"
-							min="0"
-							max="32"
-							bind:value={startingPrefix}
-							onkeydown={handlePartitionKeydown}
-						/>
+						<select class="select select-bordered w-full" bind:value={startingPrefix}>
+							<option value={null}>Same as supernet</option>
+							{#each Array.from({ length: 33 }, (_, k) => k) as p}
+								<option value={p}>/{p}</option>
+							{/each}
+						</select>
 					</fieldset>
 				</div>
 				<p class="text-xs text-base-content/60 mt-2">
@@ -560,9 +557,9 @@
 				{#if canMergeWithNext(i)}
 					<div class="border-l-4 {block.color} pl-3 -ml-1 space-y-px">
 						<div
-							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors bg-base-200/40"
+							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded"
 						>
-							<div class="w-1 self-stretch rounded {block.color}"></div>
+							<div></div>
 							<div class="font-mono text-sm font-medium">{block.cidr}</div>
 							<div class="text-sm tabular-nums text-right text-base-content/80">
 								{block.usableHosts.toLocaleString()}
@@ -598,9 +595,9 @@
 						</div>
 						{#if next}
 							<div
-								class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors bg-base-200/40"
+								class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded"
 							>
-								<div class="w-1 self-stretch rounded {next.color}"></div>
+								<div></div>
 								<div class="font-mono text-sm font-medium">{next.cidr}</div>
 								<div class="text-sm tabular-nums text-right text-base-content/80">
 									{next.usableHosts.toLocaleString()}
