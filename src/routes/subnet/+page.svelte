@@ -4,7 +4,7 @@
 		ipToString,
 		calculateTotalHosts,
 		splitBlock,
-		getColorForNetwork,
+		makeBlock,
 		mergePair,
 		DISPLAY_LIMIT,
 		type ParsedCIDR,
@@ -65,24 +65,57 @@
 	// Partition tab state
 	let supernetIp = $state('10.0.0.0');
 	let supernetPrefix = $state(22);
-	let startingPrefix = $state<number | null>(24);
+	let supernet = $state<ParsedCIDR | null>(null);
 	let blocks = $state<SubnetBlock[]>([]);
 	let partitionError = $state<string | null>(null);
 	let partitionWarning = $state<string | null>(null);
 
-	function canMergeWithNext(i: number): boolean {
-		const a = blocks[i];
-		const b = blocks[i + 1];
-		if (!b || a.prefix !== b.prefix || a.prefix === 0) return false;
-		const childSize = 2 ** (32 - a.prefix);
-		const mergedSize = childSize * 2;
-		return Math.min(a.network, b.network) % mergedSize === 0;
+	const supernetTotalHosts = $derived(calculateTotalHosts(supernetPrefix));
+
+	// Split options for a block: 2, 4, 8, 16 sub-blocks (prefix+1 .. +4), capped
+	// by /32 and the display limit. Returns [{targetPrefix, count, label}].
+	function splitOptions(block: SubnetBlock): { targetPrefix: number; count: number }[] {
+		const opts: { targetPrefix: number; count: number }[] = [];
+		const room = blocks.length - 1; // removing the parent frees one slot
+		for (let step = 1; step <= 4; step++) {
+			const targetPrefix = block.prefix + step;
+			if (targetPrefix > 32) break;
+			const count = 2 ** step;
+			if (room + count > DISPLAY_LIMIT) break;
+			opts.push({ targetPrefix, count });
+		}
+		return opts;
 	}
 
-	function validStartingPrefixes(): number[] {
-		const result: number[] = [];
-		for (let p = supernetPrefix; p <= 32; p++) result.push(p);
-		return result;
+	// Finds a mergeable neighbor for the block at index i (forward first, then
+	// backward). Returns the neighbor index, or -1 if none.
+	function mergeNeighbor(i: number): number {
+		const block = blocks[i];
+		if (block.prefix === 0) return -1;
+		const childSize = 2 ** (32 - block.prefix);
+		const mergedSize = childSize * 2;
+
+		const next = blocks[i + 1];
+		if (
+			next &&
+			next.prefix === block.prefix &&
+			block.network % mergedSize === 0 &&
+			next.network - block.network === childSize
+		) {
+			return i + 1;
+		}
+
+		const prev = blocks[i - 1];
+		if (
+			prev &&
+			prev.prefix === block.prefix &&
+			prev.network % mergedSize === 0 &&
+			block.network - prev.network === childSize
+		) {
+			return i - 1;
+		}
+
+		return -1;
 	}
 
 	function handleLoad() {
@@ -107,64 +140,17 @@
 			return;
 		}
 
-		const targetPrefix = startingPrefix ?? parsed.prefix;
-		if (targetPrefix < parsed.prefix || targetPrefix > 32) {
-			partitionError = `Starting prefix (/${targetPrefix}) must be between /${parsed.prefix} and /32.`;
-			return;
-		}
-
-		const totalBlocks = 2 ** (targetPrefix - parsed.prefix);
-		if (totalBlocks > DISPLAY_LIMIT) {
-			partitionWarning = `This split would produce ${totalBlocks.toLocaleString()} blocks, exceeding the ${DISPLAY_LIMIT} display limit. Use a larger starting prefix or a smaller supernet.`;
-			return;
-		}
-
-		if (targetPrefix === parsed.prefix) {
-			const blockSize = 2 ** (32 - parsed.prefix);
-			let usableRange: string;
-			let usableHosts: number;
-			if (parsed.prefix === 32) {
-				usableRange = ipToString(parsed.network);
-				usableHosts = 1;
-			} else if (parsed.prefix === 31) {
-				usableRange = `${ipToString(parsed.network)} - ${ipToString(parsed.broadcast)}`;
-				usableHosts = 2;
-			} else {
-				usableRange = `${ipToString(parsed.network + 1)} - ${ipToString(parsed.broadcast - 1)}`;
-				usableHosts = blockSize - 2;
-			}
-
-			blocks = [
-				{
-					network: parsed.network,
-					cidr: parsed.cidrStr,
-					networkAddress: ipToString(parsed.network),
-					broadcastAddress: ipToString(parsed.broadcast),
-					usableRange,
-					totalHosts: blockSize,
-					usableHosts,
-					prefix: parsed.prefix,
-					color: getColorForNetwork(parsed.network, parsed.prefix),
-					note: ''
-				}
-			];
-		} else {
-			const result = splitBlock(parsed.network, parsed.prefix, targetPrefix);
-			if (result.error) {
-				partitionError = result.error;
-				return;
-			}
-			blocks = result.blocks;
-		}
+		supernet = parsed;
+		blocks = [makeBlock(parsed.network, parsed.prefix, parsed.prefix)];
 	}
 
-	function handleSplit(index: number) {
+	function handleSplit(index: number, targetPrefix: number) {
 		partitionError = null;
+		partitionWarning = null;
 
 		const parent = blocks[index];
-		if (parent.prefix >= 32) return;
+		if (targetPrefix <= parent.prefix || targetPrefix > 32) return;
 
-		const targetPrefix = parent.prefix + 1;
 		const newCount = 2 ** (targetPrefix - parent.prefix);
 		const totalAfter = blocks.length - 1 + newCount;
 		if (totalAfter > DISPLAY_LIMIT) {
@@ -172,50 +158,31 @@
 			return;
 		}
 
-		const result = splitBlock(parent.network, parent.prefix, targetPrefix);
+		const sp = parent.supernetPrefix;
+		const result = splitBlock(parent.network, parent.prefix, targetPrefix, sp);
 		if (result.error) {
 			partitionError = result.error;
 			return;
 		}
 
-		if (parent.note) {
-			result.blocks[0].note = parent.note;
-		}
+		if (parent.note) result.blocks[0].note = parent.note;
 
 		blocks = [...blocks.slice(0, index), ...result.blocks, ...blocks.slice(index + 1)];
-		partitionWarning = null;
+
+		// Close the split dropdown (focus-based) after an action.
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
 	}
 
 	function handleMerge(index: number) {
 		partitionError = null;
 		partitionWarning = null;
 
-		const block = blocks[index];
-		if (block.prefix === 0) return;
-
-		const childSize = 2 ** (32 - block.prefix);
-		const mergedSize = childSize * 2;
-
-		let neighborIdx = -1;
-		if (
-			index + 1 < blocks.length &&
-			blocks[index + 1].prefix === block.prefix &&
-			block.network % mergedSize === 0
-		) {
-			neighborIdx = index + 1;
-		} else if (
-			index - 1 >= 0 &&
-			blocks[index - 1].prefix === block.prefix &&
-			blocks[index - 1].network % mergedSize === 0
-		) {
-			neighborIdx = index - 1;
-		}
-
+		const neighborIdx = mergeNeighbor(index);
 		if (neighborIdx < 0) return;
 
-		const merged = mergePair(block, blocks[neighborIdx]);
+		const merged = mergePair(blocks[index], blocks[neighborIdx]);
 		if (!merged) {
-			partitionWarning = 'Cannot merge: blocks not aligned to a power-of-2 boundary.';
+			partitionWarning = 'Cannot merge: blocks are not aligned to a power-of-2 boundary.';
 			return;
 		}
 
@@ -231,7 +198,7 @@
 	function handlePartitionClear() {
 		supernetIp = '10.0.0.0';
 		supernetPrefix = 22;
-		startingPrefix = 24;
+		supernet = null;
 		blocks = [];
 		partitionError = null;
 		partitionWarning = null;
@@ -242,6 +209,26 @@
 			handleLoad();
 		}
 	}
+
+	// Size of a block as a percentage of the supernet (for the proportional bar).
+	function sizePct(block: SubnetBlock): number {
+		if (!supernet) return 100;
+		const total = calculateTotalHosts(supernet.prefix);
+		return Math.max((block.totalHosts / total) * 100, 0.5);
+	}
+
+	// Summary: blocks grouped by prefix, in ascending prefix (largest size) order.
+	const summary = $derived.by(() => {
+		const acc: { prefix: number; count: number }[] = [];
+		for (const b of blocks) {
+			const existing = acc.find((x) => x.prefix === b.prefix);
+			if (existing) existing.count += 1;
+			else acc.push({ prefix: b.prefix, count: 1 });
+		}
+		return acc.sort((a, b) => a.prefix - b.prefix);
+	});
+
+	const allocatedHosts = $derived(blocks.reduce((sum, b) => sum + b.totalHosts, 0));
 </script>
 
 <svelte:head>
@@ -489,24 +476,16 @@
 						/>
 						<span class="text-base-content/60">/</span>
 						<select class="select select-bordered w-24" bind:value={supernetPrefix}>
-							{#each Array.from({ length: 33 }, (_, k) => k) as p}
+							{#each Array.from({ length: 33 }, (_, k) => k) as p (p)}
 								<option value={p}>/{p}</option>
 							{/each}
 						</select>
 					</div>
 				</fieldset>
-				<fieldset class="fieldset mt-2">
-					<legend class="fieldset-legend">Starting prefix</legend>
-					<select class="select select-bordered w-32" bind:value={startingPrefix}>
-						<option value={null}>Same as supernet</option>
-						{#each validStartingPrefixes() as p}
-							<option value={p}>/{p}</option>
-						{/each}
-					</select>
-				</fieldset>
 				<p class="text-xs text-base-content/60 mt-2">
-					Load a supernet, optionally pre-split to a starting prefix. Then split (prefix+1) or merge
-					(prefix-1) individual subnets. Add notes with the pencil icon.
+					Load a supernet to start with one block covering the whole range. Then split blocks into
+					smaller subnets or merge adjacent same-size blocks back together. Add a note to label any
+					block.
 				</p>
 				<div class="flex flex-wrap gap-3 mt-4">
 					<button class="btn btn-primary" onclick={handleLoad}>Load</button>
@@ -554,145 +533,129 @@
 			</div>
 		{/if}
 
-		{#if blocks.length > 0}
-			<div class="text-sm text-base-content/50 mb-2">
-				{blocks.length} block{blocks.length !== 1 ? 's' : ''}
+		{#if blocks.length > 0 && supernet}
+			<!-- Summary -->
+			<div class="card bg-base-200 mb-4">
+				<div class="card-body !p-4 gap-3">
+					<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+						<span class="font-mono text-sm font-semibold">{supernet.cidrStr}</span>
+						<span class="text-xs text-base-content/60">
+							{supernetTotalHosts.toLocaleString()} total addresses
+						</span>
+						<span class="text-xs text-base-content/60">
+							{allocatedHosts.toLocaleString()} allocated ·
+							{(supernetTotalHosts - allocatedHosts).toLocaleString()} remaining
+						</span>
+					</div>
+					<div class="flex flex-wrap gap-1.5">
+						{#each summary as s (s.prefix)}
+							<span
+								class="badge badge-sm font-mono text-xs {s.prefix === supernet.prefix
+									? 'badge-ghost'
+									: ''}"
+							>
+								{s.count}× /{s.prefix}
+							</span>
+						{/each}
+					</div>
+				</div>
 			</div>
 
-			<div
-				class="hidden sm:grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 pb-1 text-xs text-base-content/50 font-medium"
-			>
-				<div></div>
-				<div>CIDR</div>
-				<div class="text-right">Hosts</div>
-				<div>Range</div>
-				<div>Note</div>
-				<div></div>
-				<div></div>
-			</div>
-
-			{#each blocks as block, i (block.cidr + '-' + i)}
-				{@const next = blocks[i + 1]}
-
-				{#if canMergeWithNext(i)}
-					<div class="border-l-4 {block.color.border} space-y-px">
-						<div
-							class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
-						>
-							<div></div>
-							<div class="font-mono text-sm font-medium">{block.cidr}</div>
-							<div class="text-sm tabular-nums text-right text-base-content/80">
-								{block.usableHosts.toLocaleString()}
+			<!-- Block list -->
+			<div class="flex flex-col gap-2">
+				{#each blocks as block, i (block.cidr + '-' + i)}
+					{@const opts = splitOptions(block)}
+					{@const neighbor = mergeNeighbor(i)}
+					<div
+						class="rounded-lg border {block.color
+							.border} bg-base-200/40 px-3 py-2 transition-colors hover:bg-base-200"
+					>
+						<!-- Top row: CIDR + size bar + hosts badge -->
+						<div class="flex items-center gap-3">
+							<span class="font-mono text-sm font-medium min-w-0 truncate" title={block.cidr}>
+								{block.cidr}
+							</span>
+							<div class="flex-1 min-w-8 h-2.5 rounded-full bg-base-300/60 overflow-hidden">
+								<div
+									class="h-full rounded-full {block.color.bar}"
+									style="width: {sizePct(block)}%"
+									title="{block.totalHosts.toLocaleString()} of {supernetTotalHosts.toLocaleString()} addresses ({sizePct(
+										block
+									)
+										.toFixed(1)
+										.replace(/\\.0+$/, '')}%)"
+								></div>
 							</div>
-							<div class="text-sm font-mono truncate text-base-content/80">
+							<span class="badge badge-sm badge-ghost font-mono text-xs whitespace-nowrap">
+								{block.usableHosts.toLocaleString()} usable
+							</span>
+						</div>
+
+						<!-- Metadata row -->
+						<div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+							<span class="font-mono text-base-content/70 truncate" title={block.usableRange}>
+								<span class="text-base-content/40">range</span>
 								{block.usableRange}
-							</div>
+							</span>
+							<span class="font-mono text-base-content/50">
+								<span class="text-base-content/40">bcast</span>
+								{block.broadcastAddress}
+							</span>
+							<span class="font-mono {block.color.text}">
+								1/{(supernetTotalHosts / block.totalHosts).toLocaleString()} of supernet
+							</span>
+						</div>
+
+						<!-- Controls row -->
+						<div class="mt-2 flex flex-wrap items-center gap-2">
 							<input
 								type="text"
-								class="input input-xs input-ghost text-xs"
+								class="input input-xs input-ghost flex-1 min-w-32 text-xs"
 								placeholder="add a note…"
 								value={block.note}
 								oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
 							/>
-							{#if block.prefix < 32}
-								<button
-									class="btn btn-xs btn-ghost"
-									title="Split to /{block.prefix + 1}"
-									onclick={() => handleSplit(i)}
-								>
-									<Split class="h-3.5 w-3.5" />
-								</button>
-							{:else}
-								<div></div>
-							{/if}
-							<button
-								class="btn btn-xs btn-ghost"
-								title="Merge with next subnet"
-								onclick={() => handleMerge(i)}
-							>
-								<Merge class="h-3.5 w-3.5" />
-							</button>
-						</div>
-						{#if next}
-							<div
-								class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
-							>
-								<div></div>
-								<div class="font-mono text-sm font-medium">{next.cidr}</div>
-								<div class="text-sm tabular-nums text-right text-base-content/80">
-									{next.usableHosts.toLocaleString()}
-								</div>
-								<div class="text-sm font-mono truncate text-base-content/80">
-									{next.usableRange}
-								</div>
-								<input
-									type="text"
-									class="input input-xs input-ghost text-xs"
-									placeholder="add a note…"
-									value={next.note}
-									oninput={(e) => handleNoteChange(i + 1, e.currentTarget.value)}
-								/>
-								{#if next.prefix < 32}
+							{#if block.prefix < 32 && opts.length > 0}
+								<div class="dropdown dropdown-end">
 									<button
 										class="btn btn-xs btn-ghost"
-										title="Split to /{next.prefix + 1}"
-										onclick={() => handleSplit(i + 1)}
+										title="Split into smaller subnets"
+										tabindex="0"
+										onclick={(e) => e.currentTarget.focus()}
 									>
 										<Split class="h-3.5 w-3.5" />
+										Split
 									</button>
-								{:else}
-									<div></div>
-								{/if}
-								{#if canMergeWithNext(i + 1)}
-									<button
-										class="btn btn-xs btn-ghost"
-										title="Merge with next subnet"
-										onclick={() => handleMerge(i + 1)}
+									<ul
+										class="dropdown-content z-10 menu p-1 shadow-lg bg-base-100 rounded-box w-44 mt-1"
 									>
-										<Merge class="h-3.5 w-3.5" />
-									</button>
-								{:else}
-									<div></div>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{:else if i > 0 && canMergeWithNext(i - 1)}
-					<!-- already rendered as part of a pair above -->
-				{:else}
-					<div
-						class="grid grid-cols-[4px_100px_60px_1fr_180px_36px_36px] items-center gap-3 px-2 py-2 rounded transition-colors hover:bg-base-300/30"
-					>
-						<div class="w-1 self-stretch rounded {block.color.bg}"></div>
-						<div class="font-mono text-sm font-medium">{block.cidr}</div>
-						<div class="text-sm tabular-nums text-right text-base-content/80">
-							{block.usableHosts.toLocaleString()}
+										{#each opts as o (o.targetPrefix)}
+											<li>
+												<button onclick={() => handleSplit(i, o.targetPrefix)}>
+													<span class="font-mono">/{o.targetPrefix}</span>
+													<span class="text-base-content/50 text-xs">
+														({o.count} block{o.count > 1 ? 's' : ''})
+													</span>
+												</button>
+											</li>
+										{/each}
+									</ul>
+								</div>
+							{/if}
+							{#if neighbor >= 0}
+								<button
+									class="btn btn-xs btn-ghost"
+									title="Merge with {blocks[neighbor].cidr} → /{block.prefix - 1}"
+									onclick={() => handleMerge(i)}
+								>
+									<Merge class="h-3.5 w-3.5" />
+									Merge
+								</button>
+							{/if}
 						</div>
-						<div class="text-sm font-mono truncate text-base-content/80">
-							{block.usableRange}
-						</div>
-						<input
-							type="text"
-							class="input input-xs input-ghost text-xs"
-							placeholder="add a note…"
-							value={block.note}
-							oninput={(e) => handleNoteChange(i, e.currentTarget.value)}
-						/>
-						{#if block.prefix < 32}
-							<button
-								class="btn btn-xs btn-ghost"
-								title="Split to /{block.prefix + 1}"
-								onclick={() => handleSplit(i)}
-							>
-								<Split class="h-3.5 w-3.5" />
-							</button>
-						{:else}
-							<div></div>
-						{/if}
-						<div></div>
 					</div>
-				{/if}
-			{/each}
+				{/each}
+			</div>
 		{:else if !partitionError}
 			<div class="card bg-base-200">
 				<div class="card-body text-center py-12">

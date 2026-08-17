@@ -4,14 +4,12 @@ import {
 	prefixToNetmask,
 	calculateUsableHosts,
 	calculateTotalHosts,
-	partitionSubnet,
 	splitBlock,
-	getSubnetColor,
-	getColorForNetwork,
+	makeBlock,
+	getColorForPrefix,
 	ipToString,
 	isValidCIDR,
 	mergePair,
-	DISPLAY_LIMIT,
 	type SubnetBlock
 } from './subnet';
 
@@ -85,24 +83,6 @@ describe('calculateTotalHosts', () => {
 
 	it('returns 1 for /32', () => {
 		expect(calculateTotalHosts(32)).toBe(1);
-	});
-});
-
-describe('getSubnetColor', () => {
-	it('cycles through the palette', () => {
-		const palette = [
-			'bg-primary/30',
-			'bg-secondary/30',
-			'bg-accent/30',
-			'bg-info/30',
-			'bg-success/30',
-			'bg-warning/30',
-			'bg-error/30',
-			'bg-neutral/30'
-		];
-		expect(getSubnetColor(0)).toBe(palette[0]);
-		expect(getSubnetColor(7)).toBe(palette[7]);
-		expect(getSubnetColor(8)).toBe(palette[0]);
 	});
 });
 
@@ -222,130 +202,98 @@ describe('parseCIDR - invalid inputs return null', () => {
 	});
 });
 
-describe('partitionSubnet', () => {
-	it('partitions 10.0.0.0/24 into a single /24', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/24', 24);
-		expect(error).toBeUndefined();
-		expect(subnets).toHaveLength(1);
-		expect(subnets[0].cidr).toBe('10.0.0.0/24');
-		expect(subnets[0].usableHosts).toBe(254);
+describe('getColorForPrefix', () => {
+	it('gives the supernet prefix the first palette color', () => {
+		expect(getColorForPrefix(22, 22)).toStrictEqual(getColorForPrefix(22, 22));
 	});
 
-	it('partitions 10.0.0.0/16 into 256 /24 subnets', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/16', 24);
-		expect(error).toBeUndefined();
-		expect(subnets).toHaveLength(256);
-		expect(subnets[0].cidr).toBe('10.0.0.0/24');
-		expect(subnets[1].cidr).toBe('10.0.1.0/24');
-		expect(subnets[255].cidr).toBe('10.0.255.0/24');
+	it('gives same-size blocks the same color regardless of network address', () => {
+		// Two /24 blocks within a /22 supernet share a color (diff = 2).
+		expect(getColorForPrefix(24, 22)).toStrictEqual(getColorForPrefix(24, 22));
 	});
 
-	it('marks allocated indices', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/16', 24, [0, 2]);
-		expect(error).toBeUndefined();
-		expect(subnets[0].isAllocated).toBe(true);
-		expect(subnets[1].isAllocated).toBe(false);
-		expect(subnets[2].isAllocated).toBe(true);
-		expect(subnets[3].isAllocated).toBe(false);
+	it('gives different-size blocks different colors within a supernet', () => {
+		// /24 (diff 2) and /25 (diff 3) differ; /25 and /26 (diff 4) differ.
+		expect(getColorForPrefix(24, 22)).not.toStrictEqual(getColorForPrefix(25, 22));
+		expect(getColorForPrefix(25, 22)).not.toStrictEqual(getColorForPrefix(26, 22));
 	});
 
-	it('assigns rotating colors per index', () => {
-		const { subnets } = partitionSubnet('10.0.0.0/16', 24);
-		expect(subnets[0].color).not.toBe(subnets[1].color);
-		expect(subnets[0].color).toBe(getSubnetColor(0));
-		expect(subnets[8].color).toBe(getSubnetColor(0));
+	it('wraps around the 8-color palette', () => {
+		// diff 0 and diff 8 should map to the same palette slot.
+		expect(getColorForPrefix(22, 22)).toStrictEqual(getColorForPrefix(30, 22));
 	});
 
-	it('caps the result at DISPLAY_LIMIT for very large partitions', () => {
-		// 10.0.0.0/16 partitioned into /27 = 2^(27-16) = 2048 subnets
-		const { subnets, error } = partitionSubnet('10.0.0.0/16', 27);
-		expect(error).toBeUndefined();
-		expect(subnets).toHaveLength(DISPLAY_LIMIT);
-		expect(DISPLAY_LIMIT).toBe(1024);
-	});
-
-	it('returns an error when target prefix is smaller than supernet prefix', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/16', 8);
-		expect(error).toBeDefined();
-		expect(error).toMatch(/larger than or equal/);
-		expect(subnets).toHaveLength(0);
-	});
-
-	it('returns an error for invalid CIDR input', () => {
-		const { subnets, error } = partitionSubnet('not-a-cidr', 24);
-		expect(error).toBe('Invalid CIDR notation.');
-		expect(subnets).toHaveLength(0);
-	});
-
-	it('returns an error for target prefix > 32', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/24', 33);
-		expect(error).toBeDefined();
-		expect(subnets).toHaveLength(0);
-	});
-
-	it('handles /31 partitions (2 usable per subnet)', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/30', 31);
-		expect(error).toBeUndefined();
-		expect(subnets).toHaveLength(2);
-		expect(subnets[0].usableHosts).toBe(2);
-	});
-
-	it('handles /32 partitions (1 usable per subnet)', () => {
-		const { subnets, error } = partitionSubnet('10.0.0.0/30', 32);
-		expect(error).toBeUndefined();
-		expect(subnets).toHaveLength(4);
-		expect(subnets[0].usableHosts).toBe(1);
+	it('handles a /0 supernet', () => {
+		expect(getColorForPrefix(0, 0)).toStrictEqual(getColorForPrefix(0, 0));
+		expect(getColorForPrefix(8, 0)).not.toStrictEqual(getColorForPrefix(9, 0));
 	});
 });
 
-describe('getColorForNetwork', () => {
-	it('gives the first child of a split the same color as the parent', () => {
-		const parentColor = getColorForNetwork(0x0a000000, 24);
-		const firstChildColor = getColorForNetwork(0x0a000000, 25);
-		expect(firstChildColor).toStrictEqual(parentColor);
+describe('makeBlock', () => {
+	const ip = (a: number, b: number, c: number, d: number): number =>
+		(((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
+
+	it('builds a /24 block with correct fields', () => {
+		const block = makeBlock(ip(10, 0, 0, 0), 24, 22);
+		expect(block.cidr).toBe('10.0.0.0/24');
+		expect(block.networkAddress).toBe('10.0.0.0');
+		expect(block.broadcastAddress).toBe('10.0.0.255');
+		expect(block.usableRange).toBe('10.0.0.1 - 10.0.0.254');
+		expect(block.totalHosts).toBe(256);
+		expect(block.usableHosts).toBe(254);
+		expect(block.prefix).toBe(24);
+		expect(block.supernetPrefix).toBe(22);
+		expect(block.note).toBe('');
 	});
 
-	it('gives both /25 children the same color (pair-friendly formula)', () => {
-		const firstChild = getColorForNetwork(0x0a000000, 25);
-		const secondChild = getColorForNetwork(0x0a000080, 25);
-		expect(secondChild).toStrictEqual(firstChild);
+	it('builds a /31 block (RFC 3021, 2 usable)', () => {
+		const block = makeBlock(ip(10, 0, 0, 0), 31, 30);
+		expect(block.usableHosts).toBe(2);
+		expect(block.usableRange).toBe('10.0.0.0 - 10.0.0.1');
 	});
 
-	it('gives different prefix siblings the same color when addresses match', () => {
-		// 10.0.0.0/25 and 10.0.0.0/26 (both at network 10.0.0.0) get the same color
-		const a = getColorForNetwork(0x0a000000, 25);
-		const b = getColorForNetwork(0x0a000000, 26);
-		expect(b).toStrictEqual(a);
+	it('builds a /32 block (1 usable)', () => {
+		const block = makeBlock(ip(10, 0, 0, 0), 32, 30);
+		expect(block.usableHosts).toBe(1);
+		expect(block.usableRange).toBe('10.0.0.0');
 	});
 
-	it('cycles through the palette across many subnets', () => {
-		const colors = new Set<string>();
-		for (let i = 0; i < 16; i++) {
-			colors.add(getColorForNetwork(i * 256, 24).bg);
-		}
-		expect(colors.size).toBe(8);
+	it('carries the supplied note', () => {
+		const block = makeBlock(ip(10, 0, 0, 0), 24, 22, 'web tier');
+		expect(block.note).toBe('web tier');
+	});
+
+	it('colors the block by prefix relative to the supernet', () => {
+		const a = makeBlock(ip(10, 0, 0, 0), 24, 22);
+		const b = makeBlock(ip(10, 0, 1, 0), 24, 22);
+		expect(a.color).toStrictEqual(b.color);
+		const c = makeBlock(ip(10, 0, 0, 0), 25, 22);
+		expect(a.color).not.toStrictEqual(c.color);
 	});
 });
 
 describe('splitBlock', () => {
 	const ip = (a: number, b: number, c: number, d: number): number =>
 		(((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
+	// In these tests the parent prefix is treated as the supernet prefix.
+	const SP = (parentPrefix: number) => parentPrefix;
 
 	it('splits a /24 into two /25 sub-blocks at correct addresses', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 25);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 25, SP(24));
 		expect(error).toBeUndefined();
 		expect(blocks).toHaveLength(2);
 		expect(blocks[0].cidr).toBe('10.0.0.0/25');
 		expect(blocks[0].network).toBe(ip(10, 0, 0, 0));
 		expect(blocks[0].totalHosts).toBe(128);
 		expect(blocks[0].usableHosts).toBe(126);
+		expect(blocks[0].supernetPrefix).toBe(24);
 		expect(blocks[1].cidr).toBe('10.0.0.128/25');
 		expect(blocks[1].network).toBe(ip(10, 0, 0, 128));
 		expect(blocks[1].broadcastAddress).toBe('10.0.0.255');
 	});
 
 	it('splits a /23 into four /25 sub-blocks in network order', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 23, 25);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 23, 25, SP(23));
 		expect(error).toBeUndefined();
 		expect(blocks).toHaveLength(4);
 		expect(blocks[0].cidr).toBe('10.0.0.0/25');
@@ -355,7 +303,7 @@ describe('splitBlock', () => {
 	});
 
 	it('splits a /16 into 256 /24 sub-blocks', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 16, 24);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 16, 24, SP(16));
 		expect(error).toBeUndefined();
 		expect(blocks).toHaveLength(256);
 		expect(blocks[0].cidr).toBe('10.0.0.0/24');
@@ -363,25 +311,25 @@ describe('splitBlock', () => {
 	});
 
 	it('returns an error when target prefix equals current prefix', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 24);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 24, SP(24));
 		expect(error).toBeDefined();
 		expect(blocks).toHaveLength(0);
 	});
 
 	it('returns an error when target prefix is smaller than current', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 16);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 16, SP(24));
 		expect(error).toBeDefined();
 		expect(blocks).toHaveLength(0);
 	});
 
 	it('returns an error when target prefix is greater than 32', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 33);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 24, 33, SP(24));
 		expect(error).toBeDefined();
 		expect(blocks).toHaveLength(0);
 	});
 
 	it('handles /31 split (RFC 3021, 2 usable per block)', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 30, 31);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 30, 31, SP(30));
 		expect(error).toBeUndefined();
 		expect(blocks).toHaveLength(2);
 		expect(blocks[0].usableHosts).toBe(2);
@@ -389,7 +337,7 @@ describe('splitBlock', () => {
 	});
 
 	it('handles /32 split (1 usable per block)', () => {
-		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 30, 32);
+		const { blocks, error } = splitBlock(ip(10, 0, 0, 0), 30, 32, SP(30));
 		expect(error).toBeUndefined();
 		expect(blocks).toHaveLength(4);
 		expect(blocks[0].usableHosts).toBe(1);
@@ -398,32 +346,42 @@ describe('splitBlock', () => {
 	});
 
 	it('returns blocks with empty notes', () => {
-		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25);
+		const { blocks } = splitBlock(ip(10, 0, 0, 0), 24, 25, SP(24));
 		expect(blocks[0].note).toBe('');
 	});
 
-	it('assigns distinct colors to adjacent sub-blocks', () => {
-		const { blocks } = splitBlock(ip(10, 0, 0, 0), 23, 24);
-		expect(blocks[0].color).not.toBe(blocks[1].color);
+	it('gives adjacent same-size sub-blocks the same color', () => {
+		const { blocks } = splitBlock(ip(10, 0, 0, 0), 23, 24, SP(23));
+		expect(blocks[0].color).toStrictEqual(blocks[1].color);
+	});
+
+	it('gives different-size splits different colors', () => {
+		const a = splitBlock(ip(10, 0, 0, 0), 23, 24, SP(23)).blocks[0]; // /24
+		const b = splitBlock(ip(10, 0, 0, 0), 23, 25, SP(23)).blocks[0]; // /25
+		expect(a.color).not.toStrictEqual(b.color);
 	});
 });
 
 describe('mergePair', () => {
 	const ip = (a: number, b: number, c: number, d: number): number =>
 		(((a << 24) | (b << 16) | (c << 8) | d) >>> 0) as number;
+	// Use a shared supernet prefix so color/supernet guards don't trip the
+	// adjacency/alignment assertions under test.
+	const SP = 22;
 
 	it('merges two /25 siblings into a /24', () => {
-		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25, SP).blocks;
 		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
 		expect(parent!.cidr).toBe('10.0.0.0/24');
 		expect(parent!.totalHosts).toBe(256);
 		expect(parent!.usableHosts).toBe(254);
 		expect(parent!.network).toBe(ip(10, 0, 0, 0));
+		expect(parent!.supernetPrefix).toBe(SP);
 	});
 
 	it('merges two /26 siblings into a /25', () => {
-		const [a, b] = splitBlock(ip(10, 0, 0, 0), 25, 26).blocks;
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 25, 26, SP).blocks;
 		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
 		expect(parent!.cidr).toBe('10.0.0.0/25');
@@ -431,45 +389,34 @@ describe('mergePair', () => {
 	});
 
 	it('returns null when prefixes do not match', () => {
-		const [a] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
-		const [b] = splitBlock(ip(10, 0, 0, 128), 25, 26).blocks;
+		const [a] = splitBlock(ip(10, 0, 0, 0), 24, 25, SP).blocks;
+		const [b] = splitBlock(ip(10, 0, 0, 128), 25, 26, SP).blocks;
 		const parent = mergePair(a, b);
 		expect(parent).toBeNull();
 	});
 
 	it('returns null when blocks are not adjacent', () => {
-		const blocks = splitBlock(ip(10, 0, 0, 0), 24, 26).blocks;
+		const blocks = splitBlock(ip(10, 0, 0, 0), 24, 26, SP).blocks;
 		const parent = mergePair(blocks[0], blocks[3]);
 		expect(parent).toBeNull();
 	});
 
 	it('returns null when not power-of-2 aligned', () => {
 		// 10.0.0.64/26 and 10.0.0.128/26 — adjacent /26 but not aligned to /25
-		const blocks = splitBlock(ip(10, 0, 0, 0), 24, 26).blocks;
+		const blocks = splitBlock(ip(10, 0, 0, 0), 24, 26, SP).blocks;
 		const parent = mergePair(blocks[1], blocks[2]);
 		expect(parent).toBeNull();
 	});
 
 	it('returns null when prefix is 0', () => {
-		const blockA: SubnetBlock = {
-			network: ip(0, 0, 0, 0),
-			cidr: '0.0.0.0/0',
-			networkAddress: '0.0.0.0',
-			broadcastAddress: '255.255.255.255',
-			usableRange: '0.0.0.1 - 255.255.255.254',
-			totalHosts: 2 ** 32,
-			usableHosts: 2 ** 32 - 2,
-			prefix: 0,
-			color: { bg: 'bg-primary/30', border: 'border-primary/30' },
-			note: ''
-		};
-		const blockB = { ...blockA };
+		const blockA: SubnetBlock = makeBlock(ip(0, 0, 0, 0), 0, 0);
+		const blockB: SubnetBlock = { ...blockA };
 		const parent = mergePair(blockA, blockB);
 		expect(parent).toBeNull();
 	});
 
 	it('merges /31 siblings (RFC 3021) into /30', () => {
-		const [a, b] = splitBlock(ip(10, 0, 0, 0), 30, 31).blocks;
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 30, 31, SP).blocks;
 		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
 		expect(parent!.prefix).toBe(30);
@@ -477,7 +424,7 @@ describe('mergePair', () => {
 	});
 
 	it('merges /32 siblings into /31', () => {
-		const [a, b] = splitBlock(ip(10, 0, 0, 0), 31, 32).blocks;
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 31, 32, SP).blocks;
 		const parent = mergePair(a, b);
 		expect(parent).not.toBeNull();
 		expect(parent!.prefix).toBe(31);
@@ -485,16 +432,22 @@ describe('mergePair', () => {
 	});
 
 	it('preserves note from first child', () => {
-		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25, SP).blocks;
 		a.note = 'first note';
 		const parent = mergePair(a, b);
 		expect(parent!.note).toBe('first note');
 	});
 
 	it('preserves note from second child when first is empty', () => {
-		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25).blocks;
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25, SP).blocks;
 		b.note = 'second note';
 		const parent = mergePair(a, b);
 		expect(parent!.note).toBe('second note');
+	});
+
+	it('colors the merged block by its prefix relative to the supernet', () => {
+		const [a, b] = splitBlock(ip(10, 0, 0, 0), 24, 25, SP).blocks;
+		const parent = mergePair(a, b);
+		expect(parent!.color).toStrictEqual(getColorForPrefix(24, SP));
 	});
 });

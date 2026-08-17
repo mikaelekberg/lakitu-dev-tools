@@ -1,7 +1,7 @@
 /**
  * CIDR / Subnet Calculation Utilities
  *
- * Provides parsing, partitioning, and display helpers
+ * Provides parsing, splitting, merging, and display helpers
  * for IPv4 CIDR notation and subnet math.
  */
 
@@ -17,15 +17,10 @@ export interface ParsedCIDR {
 	cidrStr: string; // normalized CIDR string
 }
 
-export interface SubnetPartition {
-	cidr: string; // e.g. "10.0.0.0/24"
-	networkAddress: string;
-	broadcastAddress: string;
-	usableRange: string; // e.g. "10.0.1.1 - 10.0.1.254"
-	totalHosts: number;
-	usableHosts: number;
-	isAllocated: boolean; // user-marked as in-use
-	color: string; // visual color class
+export interface SubnetColors {
+	bar: string; // fill for the proportional size bar
+	border: string; // border class for the row / bar
+	text: string; // text color for labels
 }
 
 export interface SubnetBlock {
@@ -37,38 +32,36 @@ export interface SubnetBlock {
 	totalHosts: number;
 	usableHosts: number;
 	prefix: number;
+	supernetPrefix: number; // prefix of the root supernet (drives color)
 	color: SubnetColors;
 	note: string;
 }
 
-export interface SubnetColors {
-	bg: string;
-	border: string;
-}
-
 export const DISPLAY_LIMIT = 1024;
 
-const SUBNET_BG_COLORS = [
-	'bg-primary/30',
-	'bg-secondary/30',
-	'bg-accent/30',
-	'bg-info/30',
-	'bg-success/30',
-	'bg-warning/30',
-	'bg-error/30',
-	'bg-neutral/30'
-] as const;
+// 8-color DaisyUI palette. Color is chosen by (prefix - supernetPrefix) mod 8,
+// so every block of the same size shares a color and different sizes differ.
+const PALETTE = [
+	{ bar: 'bg-primary/70', border: 'border-primary/40', text: 'text-primary' },
+	{ bar: 'bg-secondary/70', border: 'border-secondary/40', text: 'text-secondary' },
+	{ bar: 'bg-accent/70', border: 'border-accent/40', text: 'text-accent' },
+	{ bar: 'bg-info/70', border: 'border-info/40', text: 'text-info' },
+	{ bar: 'bg-success/70', border: 'border-success/40', text: 'text-success' },
+	{ bar: 'bg-warning/70', border: 'border-warning/40', text: 'text-warning' },
+	{ bar: 'bg-error/70', border: 'border-error/40', text: 'text-error' },
+	{ bar: 'bg-neutral/70', border: 'border-neutral/40', text: 'text-neutral' }
+] as const satisfies readonly SubnetColors[];
 
-const SUBNET_BORDER_COLORS = [
-	'border-primary/30',
-	'border-secondary/30',
-	'border-accent/30',
-	'border-info/30',
-	'border-success/30',
-	'border-warning/30',
-	'border-error/30',
-	'border-neutral/30'
-] as const;
+/**
+ * Returns a stable color for a block based on its prefix relative to the
+ * supernet. Blocks of the same size always share a color; different sizes
+ * get different colors (wrapping every 8 levels).
+ */
+export function getColorForPrefix(prefix: number, supernetPrefix: number): SubnetColors {
+	const diff = prefix - supernetPrefix;
+	const idx = ((diff % PALETTE.length) + PALETTE.length) % PALETTE.length;
+	return PALETTE[idx];
+}
 
 /**
  * Converts a 32-bit unsigned integer to dotted-decimal notation.
@@ -114,24 +107,6 @@ export function calculateUsableHosts(prefix: number): number {
  */
 export function calculateTotalHosts(prefix: number): number {
 	return 2 ** (32 - prefix);
-}
-
-/**
- * Returns a Tailwind background colour class for a subnet at the given index.
- */
-export function getSubnetColor(index: number): string {
-	return SUBNET_BG_COLORS[index % SUBNET_BG_COLORS.length];
-}
-
-/**
- * Returns a stable colour for a block at the given network address and prefix.
- * Color is derived from the block's position within its supernet, so adjacent
- * blocks of equal size always get distinct colors.
- */
-export function getColorForNetwork(network: number, prefix: number): SubnetColors {
-	const blockIndex = Math.floor(network / 2 ** (32 - prefix));
-	const idx = Math.floor(blockIndex / 2) % SUBNET_BG_COLORS.length;
-	return { bg: SUBNET_BG_COLORS[idx], border: SUBNET_BORDER_COLORS[idx] };
 }
 
 /**
@@ -188,83 +163,48 @@ export function parseCIDR(input: string): ParsedCIDR | null {
 }
 
 /**
- * Partitions a CIDR supernet into smaller subnets of a given prefix length.
- *
- * @param cidr          - The supernet CIDR (e.g. "10.0.0.0/16")
- * @param targetPrefix  - Desired subnet prefix length (must be >= supernet prefix)
- * @param allocatedIndices - Optional set of subnet indices to mark as allocated
- * @returns An object with an array of subnets and an optional error message
+ * Builds a single SubnetBlock at the given network/prefix, colored relative to
+ * the supernet prefix. Used for the initial supernet block and internally by
+ * splitBlock / mergePair.
  */
-export function partitionSubnet(
-	cidr: string,
-	targetPrefix: number,
-	allocatedIndices?: number[]
-): { subnets: SubnetPartition[]; error?: string } {
-	const parsed = parseCIDR(cidr);
-	if (!parsed) {
-		return { subnets: [], error: 'Invalid CIDR notation.' };
+export function makeBlock(
+	network: number,
+	prefix: number,
+	supernetPrefix: number,
+	note = ''
+): SubnetBlock {
+	const blockSize = 2 ** (32 - prefix);
+	const broadcast = network + blockSize - 1;
+	const netAddr = ipToString(network);
+	const bcastAddr = ipToString(broadcast);
+
+	let usableRange: string;
+	let usableHosts: number;
+
+	if (prefix === 32) {
+		usableRange = netAddr;
+		usableHosts = 1;
+	} else if (prefix === 31) {
+		usableRange = `${netAddr} - ${bcastAddr}`;
+		usableHosts = 2;
+	} else {
+		usableRange = `${ipToString(network + 1)} - ${ipToString(broadcast - 1)}`;
+		usableHosts = blockSize - 2;
 	}
 
-	if (targetPrefix < parsed.prefix) {
-		return {
-			subnets: [],
-			error: `Target prefix (/${targetPrefix}) must be larger than or equal to the supernet prefix (/${parsed.prefix}).`
-		};
-	}
-
-	if (targetPrefix > 32) {
-		return {
-			subnets: [],
-			error: 'Prefix length must be between 0 and 32.'
-		};
-	}
-
-	const subnetSize = 2 ** (32 - targetPrefix);
-	// The loop runs at least once when targetPrefix >= parsed.prefix, producing
-	// exactly 2^(targetPrefix - parsed.prefix) subnets. When targetPrefix <
-	// parsed.prefix we return early above.
-	const totalSubnets = 2 ** (targetPrefix - parsed.prefix);
-
-	const allocated = new Set(allocatedIndices ?? []);
-	const subnets: SubnetPartition[] = [];
-	const maxSubnets = Math.min(totalSubnets, DISPLAY_LIMIT);
-
-	for (let i = 0; i < maxSubnets; i++) {
-		const subnetNetwork = parsed.network + i * subnetSize;
-		const subnetBroadcast = subnetNetwork + subnetSize - 1;
-
-		const netAddr = ipToString(subnetNetwork);
-		const bcastAddr = ipToString(subnetBroadcast);
-
-		let usableRange: string;
-		let usableHosts: number;
-
-		if (targetPrefix === 32) {
-			usableRange = netAddr;
-			usableHosts = 1;
-		} else if (targetPrefix === 31) {
-			usableRange = `${ipToString(subnetNetwork)} - ${ipToString(subnetBroadcast)}`;
-			usableHosts = 2;
-		} else {
-			const firstUsable = ipToString(subnetNetwork + 1);
-			const lastUsable = ipToString(subnetBroadcast - 1);
-			usableRange = `${firstUsable} - ${lastUsable}`;
-			usableHosts = subnetSize - 2;
-		}
-
-		subnets.push({
-			cidr: `${netAddr}/${targetPrefix}`,
-			networkAddress: netAddr,
-			broadcastAddress: bcastAddr,
-			usableRange,
-			totalHosts: subnetSize,
-			usableHosts,
-			isAllocated: allocated.has(i),
-			color: getSubnetColor(i)
-		});
-	}
-
-	return { subnets };
+	return {
+		network,
+		cidr: `${netAddr}/${prefix}`,
+		networkAddress: netAddr,
+		broadcastAddress: bcastAddr,
+		usableRange,
+		totalHosts: blockSize,
+		usableHosts,
+		prefix,
+		supernetPrefix,
+		color: getColorForPrefix(prefix, supernetPrefix),
+		note
+	};
 }
 
 /**
@@ -272,14 +212,16 @@ export function partitionSubnet(
  * Returns the new child blocks (in network-address order). Caller is responsible
  * for replacing the parent block in its own state.
  *
- * @param network       - The parent block's network address (32-bit unsigned)
- * @param currentPrefix - The parent block's prefix length
- * @param targetPrefix  - The desired child prefix length (must be > currentPrefix and <= 32)
+ * @param network         - The parent block's network address (32-bit unsigned)
+ * @param currentPrefix   - The parent block's prefix length
+ * @param targetPrefix    - The desired child prefix length (must be > currentPrefix and <= 32)
+ * @param supernetPrefix  - The root supernet prefix (for stable coloring)
  */
 export function splitBlock(
 	network: number,
 	currentPrefix: number,
-	targetPrefix: number
+	targetPrefix: number,
+	supernetPrefix: number
 ): { blocks: SubnetBlock[]; error?: string } {
 	if (targetPrefix <= currentPrefix) {
 		return {
@@ -301,36 +243,7 @@ export function splitBlock(
 
 	for (let i = 0; i < totalChildren; i++) {
 		const childNetwork = network + i * blockSize;
-		const childBroadcast = childNetwork + blockSize - 1;
-		const netAddr = ipToString(childNetwork);
-		const bcastAddr = ipToString(childBroadcast);
-
-		let usableRange: string;
-		let usableHosts: number;
-
-		if (targetPrefix === 32) {
-			usableRange = netAddr;
-			usableHosts = 1;
-		} else if (targetPrefix === 31) {
-			usableRange = `${netAddr} - ${bcastAddr}`;
-			usableHosts = 2;
-		} else {
-			usableRange = `${ipToString(childNetwork + 1)} - ${ipToString(childBroadcast - 1)}`;
-			usableHosts = blockSize - 2;
-		}
-
-		blocks.push({
-			network: childNetwork,
-			cidr: `${netAddr}/${targetPrefix}`,
-			networkAddress: netAddr,
-			broadcastAddress: bcastAddr,
-			usableRange,
-			totalHosts: blockSize,
-			usableHosts,
-			prefix: targetPrefix,
-			color: getColorForNetwork(childNetwork, targetPrefix),
-			note: ''
-		});
+		blocks.push(makeBlock(childNetwork, targetPrefix, supernetPrefix));
 	}
 
 	return { blocks };
@@ -347,6 +260,7 @@ export function splitBlock(
  */
 export function mergePair(a: SubnetBlock, b: SubnetBlock): SubnetBlock | null {
 	if (a.prefix !== b.prefix || a.prefix === 0) return null;
+	if (a.supernetPrefix !== b.supernetPrefix) return null;
 
 	const childSize = 2 ** (32 - a.prefix);
 	const lower = Math.min(a.network, b.network);
@@ -358,33 +272,6 @@ export function mergePair(a: SubnetBlock, b: SubnetBlock): SubnetBlock | null {
 	const mergedSize = childSize * 2;
 	if (lower % mergedSize !== 0) return null;
 
-	const blockSize = 2 ** (32 - mergedPrefix);
-	const broadcast = lower + blockSize - 1;
-	let usableRange: string;
-	let usableHosts: number;
-	if (mergedPrefix === 32) {
-		usableRange = ipToString(lower);
-		usableHosts = 1;
-	} else if (mergedPrefix === 31) {
-		usableRange = `${ipToString(lower)} - ${ipToString(broadcast)}`;
-		usableHosts = 2;
-	} else {
-		usableRange = `${ipToString(lower + 1)} - ${ipToString(broadcast - 1)}`;
-		usableHosts = blockSize - 2;
-	}
-
 	const firstNote = [a, b].find((c) => c.note)?.note ?? '';
-
-	return {
-		network: lower,
-		cidr: `${ipToString(lower)}/${mergedPrefix}`,
-		networkAddress: ipToString(lower),
-		broadcastAddress: ipToString(broadcast),
-		usableRange,
-		totalHosts: blockSize,
-		usableHosts,
-		prefix: mergedPrefix,
-		color: getColorForNetwork(lower, mergedPrefix),
-		note: firstNote
-	};
+	return makeBlock(lower, mergedPrefix, a.supernetPrefix, firstNote);
 }
