@@ -30,3 +30,6 @@ coverage/
 
 # Misc
 *.local
+
+# Agent working files
+.hermes/
