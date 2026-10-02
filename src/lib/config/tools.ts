@@ -1,14 +1,12 @@
-import {
-	FileKey,
-	Braces,
-	KeyRound,
-	Network,
-	Fingerprint,
-	Clock,
-	Regex,
-	Timer,
-	FileCode2
-} from 'lucide-svelte';
+import FileKey from '@lucide/svelte/icons/file-key';
+import Braces from '@lucide/svelte/icons/braces';
+import KeyRound from '@lucide/svelte/icons/key-round';
+import Network from '@lucide/svelte/icons/network';
+import Fingerprint from '@lucide/svelte/icons/fingerprint';
+import Clock from '@lucide/svelte/icons/clock';
+import Regex from '@lucide/svelte/icons/regex';
+import Timer from '@lucide/svelte/icons/timer';
+import FileCode2 from '@lucide/svelte/icons/file-code-2';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type IconComponent = any;

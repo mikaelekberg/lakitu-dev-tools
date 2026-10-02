@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { Hammer, ChevronDown } from 'lucide-svelte';
+	import Hammer from '@lucide/svelte/icons/hammer';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { tools, getToolHref } from '#lib/config/tools.ts';
 
 	let theme = $state('light');
