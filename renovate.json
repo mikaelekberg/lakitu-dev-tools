@@ -2,7 +2,7 @@
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
 	"extends": ["config:recommended"],
 	"schedule": ["before 9am on monday"],
-	"timezone": "America/Los_Angeles",
+	"timezone": "Europe/Stockholm",
 	"labels": ["dependencies"],
 	"prHourlyLimit": 5,
 	"prConcurrentLimit": 10,
@@ -11,6 +11,11 @@
 		"schedule": ["before 9am on monday"]
 	},
 	"packageRules": [
+		{
+			"description": "Wait three days before updating npm packages",
+			"matchDatasources": ["npm"],
+			"minimumReleaseAge": "3 days"
+		},
 		{
 			"description": "Auto-merge patch and minor dependency updates when CI passes",
 			"matchDepTypes": ["dependencies"],
@@ -28,33 +33,41 @@
 		{
 			"description": "Group Svelte ecosystem packages",
 			"groupName": "Svelte ecosystem",
-			"matchPackageNames": ["/svelte/", "/@sveltejs/*/"]
+			"matchPackageNames": ["svelte", "svelte-check", "@sveltejs/*"]
 		},
 		{
 			"description": "Group TailwindCSS ecosystem packages",
 			"groupName": "TailwindCSS ecosystem",
 			"matchPackageNames": [
-				"/tailwindcss/",
-				"/@tailwindcss/*/",
-				"/daisyui/",
-				"/autoprefixer/",
-				"/postcss/"
+				"tailwindcss",
+				"@tailwindcss/*",
+				"daisyui",
+				"autoprefixer",
+				"postcss"
 			]
 		},
 		{
 			"description": "Group linting and formatting packages",
 			"groupName": "Linting and formatting",
-			"matchPackageNames": ["/eslint/", "/prettier/", "/typescript-eslint/"]
+			"matchPackageNames": [
+				"eslint",
+				"eslint-*",
+				"@eslint/*",
+				"prettier",
+				"prettier-*",
+				"typescript-eslint",
+				"@typescript-eslint/*"
+			]
 		},
 		{
 			"description": "Group TypeScript packages",
 			"groupName": "TypeScript",
-			"matchPackageNames": ["/typescript/", "/@types/*/"]
+			"matchPackageNames": ["typescript", "@types/*"]
 		},
 		{
 			"description": "Group font packages",
 			"groupName": "Fonts",
-			"matchPackageNames": ["/@fontsource*/"]
+			"matchPackageNames": ["@fontsource/*", "@fontsource-variable/*"]
 		},
 		{
 			"description": "Group Vite and Svelte major upgrades together",
@@ -74,7 +87,7 @@
 			"matchPackageNames": ["typescript"],
 			"matchUpdateTypes": ["major"],
 			"automerge": false,
-			"labels": ["dependencies", "breaking-change", "blocked"]
+			"addLabels": ["blocked"]
 		},
 		{
 			"description": "Do not automerge major updates",
