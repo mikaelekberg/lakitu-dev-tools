@@ -1,6 +1,6 @@
 <script lang="ts">
-	import ToolCard from '$lib/components/ToolCard.svelte';
-	import { tools, getToolHref } from '$lib/config/tools';
+	import ToolCard from '#lib/components/ToolCard.svelte';
+	import { tools, getToolHref } from '#lib/config/tools.ts';
 </script>
 
 <svelte:head>

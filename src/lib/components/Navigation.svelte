@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { Hammer, ChevronDown } from 'lucide-svelte';
-	import { tools, getToolHref } from '$lib/config/tools';
+	import { tools, getToolHref } from '#lib/config/tools.ts';
 
 	let theme = $state('light');
 	let mobileMenuOpen = $state(false);
@@ -63,7 +63,7 @@
 				<button
 					tabindex="0"
 					class="btn btn-ghost gap-1"
-					class:text-primary={isAnyToolActive($page.url.pathname)}
+					class:text-primary={isAnyToolActive(page.url.pathname)}
 					aria-haspopup="true"
 					aria-expanded={dropdownOpen}
 					onclick={() => (dropdownOpen = !dropdownOpen)}
@@ -82,8 +82,8 @@
 						<li>
 							<a
 								{href}
-								class={isToolActive(tool.id, $page.url.pathname) ? 'active' : ''}
-								aria-current={isToolActive(tool.id, $page.url.pathname) ? 'page' : undefined}
+								class={isToolActive(tool.id, page.url.pathname) ? 'active' : ''}
+								aria-current={isToolActive(tool.id, page.url.pathname) ? 'page' : undefined}
 								onclick={closeDropdown}
 							>
 								<Icon class="h-4 w-4" />
@@ -189,8 +189,8 @@
 					<li>
 						<a
 							{href}
-							class={isToolActive(tool.id, $page.url.pathname) ? 'active' : ''}
-							aria-current={isToolActive(tool.id, $page.url.pathname) ? 'page' : undefined}
+							class={isToolActive(tool.id, page.url.pathname) ? 'active' : ''}
+							aria-current={isToolActive(tool.id, page.url.pathname) ? 'page' : undefined}
 							onclick={closeMobileMenu}
 						>
 							<Icon class="h-4 w-4" />

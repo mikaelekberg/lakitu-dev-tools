@@ -41,6 +41,9 @@
 		"vitest": "^5.0.0"
 	},
 	"type": "module",
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	},
 	"dependencies": {
 		"@fontsource-variable/inter": "^5.2.8",
 		"@fontsource-variable/jetbrains-mono": "^5.2.8",

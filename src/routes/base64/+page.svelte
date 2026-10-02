@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { encodeBase64, decodeBase64 } from '$lib/utils/base64';
+	import { encodeBase64, decodeBase64 } from '#lib/utils/base64.ts';
 	import {
 		encodeImageToBase64,
 		decodeBase64ToImage,
@@ -7,8 +7,8 @@
 		MAX_IMAGE_SIZE,
 		formatBytes,
 		type ImageEncodeResult
-	} from '$lib/utils/base64';
-	import { copyToClipboard } from '$lib/utils/clipboard';
+	} from '#lib/utils/base64.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
 
 	// Tab state
 	let activeTab = $state<'text' | 'image'>('text');

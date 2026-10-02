@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { copyToClipboard } from '$lib/utils/clipboard';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
 	import {
 		COMMON_TIMEZONES,
 		detectTimestampUnit,
@@ -17,7 +17,7 @@
 		datetimeLocalValueToDate,
 		getLocalTimezone,
 		getTimezoneOffset
-	} from '$lib/utils/unix-time';
+	} from '#lib/utils/unix-time.ts';
 
 	// Input state
 	let timestampInput = $state('');

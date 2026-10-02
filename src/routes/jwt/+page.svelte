@@ -8,9 +8,9 @@
 		getTimeRemaining,
 		type DecodedJWT,
 		type JWTValidationResult
-	} from '$lib/utils/jwt';
-	import { copyToClipboard } from '$lib/utils/clipboard';
-	import { escapeHtml, loadPrism } from '$lib/utils/prism';
+	} from '#lib/utils/jwt.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
+	import { escapeHtml, loadPrism } from '#lib/utils/prism.ts';
 
 	// Tab state
 	let activeTab = $state<'decode' | 'encode'>('decode');

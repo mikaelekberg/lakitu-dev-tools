@@ -12,8 +12,8 @@
 		type CronParseResult,
 		type FieldValue,
 		type FieldValueType
-	} from '$lib/utils/cron';
-	import { copyToClipboard } from '$lib/utils/clipboard';
+	} from '#lib/utils/cron.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
 
 	// Tab state
 	type Tab = 'parser' | 'builder';
