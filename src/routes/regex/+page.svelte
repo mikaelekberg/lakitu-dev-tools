@@ -7,8 +7,8 @@
 		generateHighlightedHtml,
 		formatMatchesForCopy,
 		type RegexMatch
-	} from '$lib/utils/regex';
-	import { copyToClipboard } from '$lib/utils/clipboard';
+	} from '#lib/utils/regex.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
 
 	// State
 	let pattern = $state('');

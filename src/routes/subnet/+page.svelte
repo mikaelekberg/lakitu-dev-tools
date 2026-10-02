@@ -9,7 +9,7 @@
 		DISPLAY_LIMIT,
 		type ParsedCIDR,
 		type SubnetBlock
-	} from '$lib/utils/subnet';
+	} from '#lib/utils/subnet.ts';
 	import { Split, Merge } from 'lucide-svelte';
 
 	let input = $state('');

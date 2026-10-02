@@ -7,8 +7,8 @@
 		type UUIDType,
 		type FormatOptions,
 		type TimestampExtractionResult
-	} from '$lib/utils/uuid';
-	import { copyToClipboard } from '$lib/utils/clipboard';
+	} from '#lib/utils/uuid.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
 
 	// Tab state
 	let activeTab = $state<'generate' | 'extract'>('generate');

@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { jsonToYaml, yamlToJson } from '$lib/utils/yaml';
-	import { copyToClipboard } from '$lib/utils/clipboard';
-	import { escapeHtml, loadPrism } from '$lib/utils/prism';
+	import { jsonToYaml, yamlToJson } from '#lib/utils/yaml.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
+	import { escapeHtml, loadPrism } from '#lib/utils/prism.ts';
 
 	let jsonInput = $state('');
 	let yamlInput = $state('');

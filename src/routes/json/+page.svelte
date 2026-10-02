@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { validateJSON, formatJSON, minifyJSON, queryJSON } from '$lib/utils/json';
-	import { copyToClipboard } from '$lib/utils/clipboard';
-	import { escapeHtml, loadPrism } from '$lib/utils/prism';
+	import { validateJSON, formatJSON, minifyJSON, queryJSON } from '#lib/utils/json.ts';
+	import { copyToClipboard } from '#lib/utils/clipboard.ts';
+	import { escapeHtml, loadPrism } from '#lib/utils/prism.ts';
 
 	let input = $state('');
 	let output = $state('');
