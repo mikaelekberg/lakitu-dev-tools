@@ -10,7 +10,8 @@
 		type ParsedCIDR,
 		type SubnetBlock
 	} from '#lib/utils/subnet.ts';
-	import { Split, Merge } from 'lucide-svelte';
+	import Split from '@lucide/svelte/icons/split';
+	import Merge from '@lucide/svelte/icons/merge';
 
 	let input = $state('');
 	let result = $state<ParsedCIDR | null>(null);
