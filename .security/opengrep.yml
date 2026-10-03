@@ -1,0 +1,41 @@
+rules:
+  - id: no-dynamic-code-execution
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Avoid eval and Function constructors; parse data instead of executing it.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: window.eval(...)
+      - pattern: globalThis.eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+    paths:
+      include: [src/**/*.ts, src/**/*.js]
+  - id: no-direct-html-assignment
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Use textContent or reviewed HTML sanitization instead of direct HTML assignment.
+    pattern-either:
+      - pattern: $ELEMENT.innerHTML = $VALUE
+      - pattern: $ELEMENT.outerHTML = $VALUE
+      - pattern: document.write(...)
+    paths:
+      include: [src/**/*.ts, src/**/*.js]
+  - id: svelte-dangerous-script-sink
+    languages: [generic]
+    severity: ERROR
+    message: Review dynamic code execution or direct HTML assignment in this Svelte component.
+    pattern-regex: '\b(?:eval\s*\(|(?:new\s+)?Function\s*\(|(?:innerHTML|outerHTML)\s*=|document\.write\s*\()'
+    paths:
+      include: [src/**/*.svelte]
+  - id: workflow-untrusted-shell-interpolation
+    languages: [yaml]
+    severity: ERROR
+    message: Pass untrusted GitHub event data through environment variables, not shell interpolation.
+    patterns:
+      - pattern: 'run: $SCRIPT'
+      - metavariable-regex:
+          metavariable: $SCRIPT
+          regex: '(?s).*\$\{\{\s*github\.event\.(?:pull_request\.(?:title|body|head\.ref)|issue\.(?:title|body)|comment\.body).*'
+    paths:
+      include: [.github/workflows/*.yml, .github/workflows/*.yaml]
