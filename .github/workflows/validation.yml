@@ -10,6 +10,42 @@ permissions:
   contents: read
 
 jobs:
+  opengrep:
+    name: OpenGrep security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Install verified OpenGrep
+        env:
+          OPENGREP_VERSION: v1.30.0
+          OPENGREP_SHA256: 35779bdd72e92129c8df2a77f0c55e8c08356801ea92591ef32108d6b28d564c
+        run: |
+          curl --fail --location --silent --show-error "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/opengrep_manylinux_x86" -o "$RUNNER_TEMP/opengrep"
+          echo "$OPENGREP_SHA256  $RUNNER_TEMP/opengrep" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/opengrep"
+      - name: Verify security rules
+        run: python3 scripts/test-security-rules.py "$RUNNER_TEMP/opengrep"
+      - name: Scan source and workflows
+        run: '"$RUNNER_TEMP/opengrep" scan --config .security/opengrep.yml --error --strict --disable-version-check src .github/workflows'
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Review dependency changes
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development, unknown
+          license-check: false
+          comment-summary-in-pr: never
+
   validation:
     name: Validate application
     outputs:
@@ -55,7 +91,7 @@ jobs:
 
   deploy-preview:
     name: Deploy Preview
-    needs: validation
+    needs: [validation, opengrep, dependency-review]
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
@@ -86,7 +122,7 @@ jobs:
 
   deploy-production:
     name: Deploy Production
-    needs: validation
+    needs: [validation, opengrep, dependency-review]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -116,7 +152,7 @@ jobs:
 
   bundle-size:
     name: Check Bundle Size
-    needs: validation
+    needs: [validation, opengrep, dependency-review]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
