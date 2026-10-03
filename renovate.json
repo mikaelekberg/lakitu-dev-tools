@@ -1,6 +1,6 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["config:recommended"],
+	"extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
 	"schedule": ["before 9am on monday"],
 	"timezone": "Europe/Stockholm",
 	"labels": ["dependencies"],
@@ -8,13 +8,16 @@
 	"prConcurrentLimit": 10,
 	"lockFileMaintenance": {
 		"enabled": true,
-		"schedule": ["before 9am on monday"]
+		"schedule": ["before 9am on monday"],
+		"automerge": true,
+		"platformAutomerge": false
 	},
 	"packageRules": [
 		{
 			"description": "Wait three days before updating npm packages",
 			"matchDatasources": ["npm"],
-			"minimumReleaseAge": "3 days"
+			"minimumReleaseAge": "3 days",
+			"platformAutomerge": false
 		},
 		{
 			"description": "Auto-merge patch and minor dependency updates when CI passes",
@@ -31,6 +34,12 @@
 			"automergeType": "pr"
 		},
 		{
+			"description": "Automerge routine GitHub Actions updates",
+			"matchManagers": ["github-actions"],
+			"matchUpdateTypes": ["patch", "minor", "pinDigest", "digest"],
+			"automerge": true
+		},
+		{
 			"description": "Group Svelte ecosystem packages",
 			"groupName": "Svelte ecosystem",
 			"matchPackageNames": ["svelte", "svelte-check", "@sveltejs/*"]
@@ -38,13 +47,7 @@
 		{
 			"description": "Group TailwindCSS ecosystem packages",
 			"groupName": "TailwindCSS ecosystem",
-			"matchPackageNames": [
-				"tailwindcss",
-				"@tailwindcss/*",
-				"daisyui",
-				"autoprefixer",
-				"postcss"
-			]
+			"matchPackageNames": ["tailwindcss", "@tailwindcss/*", "daisyui", "autoprefixer", "postcss"]
 		},
 		{
 			"description": "Group linting and formatting packages",
@@ -94,6 +97,21 @@
 			"matchUpdateTypes": ["major"],
 			"automerge": false,
 			"labels": ["dependencies", "breaking-change"]
+		},
+		{
+			"description": "Review major upgrades and replacements manually",
+			"matchUpdateTypes": ["major", "replacement"],
+			"automerge": false
+		},
+		{
+			"description": "Review pre-1.0 minor updates manually",
+			"matchCurrentVersion": "/^0\\./",
+			"matchUpdateTypes": ["minor"],
+			"automerge": false
 		}
-	]
+	],
+	"automergeType": "pr",
+	"automergeStrategy": "squash",
+	"platformAutomerge": true,
+	"rebaseWhen": "behind-base-branch"
 }

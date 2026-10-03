@@ -300,8 +300,7 @@
 				id="json-input"
 				class="textarea textarea-bordered h-130 font-mono text-sm w-full"
 				placeholder={'Enter JSON here, e.g. {"key": "value"}'}
-				bind:value={input}
-			></textarea>
+				bind:value={input}></textarea>
 			<div class="mt-2">
 				<button class="btn btn-xs btn-ghost" onclick={loadSampleJSON}> Load sample JSON </button>
 			</div>
@@ -325,8 +324,7 @@
 						class="textarea textarea-bordered h-130 font-mono text-sm bg-base-200 w-full"
 						placeholder="Formatted JSON will appear here..."
 						readonly
-						value={output}
-					></textarea>
+						value={output}></textarea>
 				{/if}
 			</div>
 		</fieldset>

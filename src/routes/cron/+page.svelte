@@ -202,7 +202,7 @@
 						<fieldset class="fieldset w-32">
 							<legend class="fieldset-legend">Next Runs</legend>
 							<select class="select select-bordered w-full" bind:value={nextRunCount}>
-								{#each [1, 3, 5, 10, 15, 20] as count}
+								{#each [1, 3, 5, 10, 15, 20] as count (count)}
 									<option value={count}>{count}</option>
 								{/each}
 							</select>
@@ -213,7 +213,7 @@
 					<div class="mt-4">
 						<span class="text-sm text-base-content/60 mr-2">Try:</span>
 						<div class="inline-flex flex-wrap gap-2">
-							{#each ['* * * * *', '0 9 * * 1-5', '*/15 * * * *', '0 0 1 * *', '@daily', '@hourly'] as example}
+							{#each ['* * * * *', '0 9 * * 1-5', '*/15 * * * *', '0 0 1 * *', '@daily', '@hourly'] as example, i (i)}
 								<button
 									class="badge badge-outline cursor-pointer hover:badge-primary"
 									onclick={() => loadExample(example)}
@@ -327,7 +327,7 @@
 					</legend>
 					<div class="bg-base-200 rounded-lg p-4">
 						<ul class="space-y-2">
-							{#each parseResult.nextRuns as run, i}
+							{#each parseResult.nextRuns as run, i (i)}
 								{@const formatted = formatNextRunDate(run)}
 								<li class="flex items-center gap-3 font-mono text-sm">
 									<span class="text-base-content/40 w-6 text-right">{i + 1}.</span>
@@ -454,7 +454,7 @@
 				<div class="card-body">
 					<h3 class="card-title text-base mb-4">Configure Fields</h3>
 					<div class="space-y-4">
-						{#each getBuilderFields() as field, i}
+						{#each getBuilderFields() as field, i (i)}
 							{@const fieldValue = fieldValues[i] || { type: 'wildcard' }}
 							<div class="border border-base-300 rounded-lg p-4">
 								<div class="flex flex-wrap items-start gap-4">
@@ -819,7 +819,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each CRON_EXAMPLES as example}
+					{#each CRON_EXAMPLES as example, i (i)}
 						<tr
 							class="cursor-pointer hover:bg-base-200"
 							onclick={() => {
@@ -847,7 +847,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each Object.entries(SPECIAL_STRINGS) as [key, value]}
+					{#each Object.entries(SPECIAL_STRINGS) as [key, value] (key)}
 						<tr
 							class="cursor-pointer hover:bg-base-200"
 							onclick={() => {

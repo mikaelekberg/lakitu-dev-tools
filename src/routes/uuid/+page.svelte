@@ -169,7 +169,7 @@
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">Type</legend>
 						<select class="select select-bordered w-full" bind:value={uuidType}>
-							{#each typeOptions as option}
+							{#each typeOptions as option, i (i)}
 								<option value={option.value}>{option.label} ({option.description})</option>
 							{/each}
 						</select>
@@ -264,7 +264,7 @@
 			<div class="bg-base-200 rounded-lg p-4 font-mono text-sm min-h-48 max-h-96 overflow-y-auto">
 				{#if output.length > 0}
 					<ul class="space-y-1">
-						{#each output as id, i}
+						{#each output as id, i (i)}
 							<li class="flex items-center gap-2 group">
 								<span class="text-base-content/40 text-xs w-6 text-right">{i + 1}.</span>
 								<code class="flex-1 select-all">{id}</code>

@@ -77,7 +77,7 @@
 					tabindex="0"
 					class="dropdown-content menu bg-base-200 rounded-box z-50 w-56 p-2 shadow-lg mt-2"
 				>
-					{#each tools as tool}
+					{#each tools as tool (tool.id)}
 						{@const Icon = tool.icon}
 						{@const href = getToolHref(tool)}
 						<li>
@@ -184,7 +184,7 @@
 	{#if mobileMenuOpen}
 		<div class="absolute top-full left-0 right-0 bg-base-200 shadow-lg md:hidden">
 			<ul class="menu menu-vertical px-4 py-2">
-				{#each tools as tool}
+				{#each tools as tool (tool.id)}
 					{@const Icon = tool.icon}
 					{@const href = getToolHref(tool)}
 					<li>

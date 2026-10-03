@@ -321,8 +321,7 @@
 			<textarea
 				class="textarea textarea-bordered h-32 font-mono text-sm w-full"
 				placeholder="Paste your JWT token here (e.g., eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...)"
-				bind:value={tokenInput}
-			></textarea>
+				bind:value={tokenInput}></textarea>
 			<div class="mt-2">
 				<button class="btn btn-xs btn-ghost" onclick={loadSampleToken}> Load sample token </button>
 			</div>
@@ -414,7 +413,7 @@
 							</svg>
 							<div>
 								<span class="font-semibold">Token validation failed</span>
-								{#each validationResult.errors as error}
+								{#each validationResult.errors as error, i (i)}
 									<span class="block text-sm">{error}</span>
 								{/each}
 							</div>
@@ -436,7 +435,7 @@
 								/>
 							</svg>
 							<div>
-								{#each validationResult.warnings as warning}
+								{#each validationResult.warnings as warning, i (i)}
 									<span class="block text-sm">{warning}</span>
 								{/each}
 							</div>
@@ -698,8 +697,7 @@
 				<textarea
 					class="textarea textarea-bordered h-140 font-mono text-sm w-full"
 					placeholder={'{\n  "alg": "HS256",\n  "typ": "JWT"\n}'}
-					bind:value={encodeHeader}
-				></textarea>
+					bind:value={encodeHeader}></textarea>
 			</fieldset>
 
 			<!-- Payload Input -->
@@ -708,8 +706,7 @@
 				<textarea
 					class="textarea textarea-bordered h-140 font-mono text-sm w-full"
 					placeholder={'{\n  "sub": "1234567890",\n  "name": "John Doe"\n}'}
-					bind:value={encodePayload}
-				></textarea>
+					bind:value={encodePayload}></textarea>
 			</fieldset>
 		</div>
 
@@ -782,8 +779,7 @@
 					<textarea
 						class="textarea textarea-bordered h-32 font-mono text-sm bg-base-200 w-full"
 						readonly
-						value={encodedToken}
-					></textarea>
+						value={encodedToken}></textarea>
 					<button class="btn btn-sm btn-outline absolute top-2 right-2" onclick={handleCopyToken}>
 						{#if copyTokenSuccess}
 							<svg

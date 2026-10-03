@@ -88,3 +88,13 @@ src/
 ## License
 
 MIT
+
+## Dependency update policy
+
+Renovate opens weekly updates before 09:00 Monday in Europe/Stockholm. npm releases must age three days before being eligible. Patch/minor updates, GitHub Actions digest updates, and lockfile maintenance can merge automatically using squash once required checks pass on an up-to-date branch. Major upgrades, package replacements, and pre-1.0 minor upgrades need manual review.
+
+The required validation job runs installation, high/critical security audit, lint, type checking, unit tests, production build, and Chromium smoke tests. Secret scanning is also required. Audit failures block Renovate PRs as well as human-authored PRs. Failed checks leave updates open for investigation.
+
+To run browser checks locally, run `npx playwright install chromium`, `npm run build`, then `npm run test:browser`. The suite checks all tool pages, navigation, theme persistence, Base64 conversion, and JSON formatting/error handling.
+
+Validation and deployment share one workflow. After all checks pass, validation uploads the Cloudflare build; preview and production deployment download that exact artifact without rebuilding. Bundle comparison also reuses it and builds only the PR's base commit. The compressed-size report is available in the Check Bundle Size job summary.

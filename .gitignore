@@ -33,3 +33,7 @@ coverage/
 
 # Agent working files
 .hermes/
+
+/playwright-report/
+/test-results/
+/.wrangler/
