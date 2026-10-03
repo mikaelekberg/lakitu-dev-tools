@@ -16,7 +16,7 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 
 **Please use GitHub Security Advisories to report vulnerabilities:**
 
-1. Go to the [Security Advisories](https://github.com/anomalyco/lakitu-dev-tools/security/advisories) page
+1. Go to the [Security Advisories](https://github.com/mikaelekberg/lakitu-dev-tools/security/advisories) page
 2. Click "Report a vulnerability"
 3. Provide a detailed description of the vulnerability
 
@@ -48,11 +48,15 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 This project implements the following security measures:
 
 - **Dependency Scanning**: Automated npm audit runs weekly and on all PRs
+- **Dependency Review**: PRs are blocked for newly introduced high/critical vulnerabilities, including development dependencies
+- **OpenGrep**: A pinned scanner checks selected dangerous source and workflow patterns
 - **Secret Scanning**: Automated scanning for accidentally committed secrets
 - **Security Headers**: CSP, HSTS, X-Frame-Options, and other protective headers
 - **TypeScript Strict Mode**: Catches potential issues at compile time
 - **Input Validation**: All user inputs are validated before processing
 - **XSS Prevention**: Proper escaping for any dynamic HTML rendering
+
+See [.security/README.md](.security/README.md) for the scan coverage, limitations, and rule maintenance instructions.
 
 ## Scope
 
