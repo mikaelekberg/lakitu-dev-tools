@@ -114,9 +114,9 @@ export function decodeJWT(token: string): DecodedJWT {
 		header = JSON.parse(headerJson);
 	} catch (e) {
 		if (e instanceof SyntaxError) {
-			throw new Error('Invalid JWT header: not valid JSON');
+			throw new Error('Invalid JWT header: not valid JSON', { cause: e });
 		}
-		throw new Error('Invalid JWT header: could not decode');
+		throw new Error('Invalid JWT header: could not decode', { cause: e });
 	}
 
 	try {
@@ -124,9 +124,9 @@ export function decodeJWT(token: string): DecodedJWT {
 		payload = JSON.parse(payloadJson);
 	} catch (e) {
 		if (e instanceof SyntaxError) {
-			throw new Error('Invalid JWT payload: not valid JSON');
+			throw new Error('Invalid JWT payload: not valid JSON', { cause: e });
 		}
-		throw new Error('Invalid JWT payload: could not decode');
+		throw new Error('Invalid JWT payload: could not decode', { cause: e });
 	}
 
 	if (typeof header !== 'object' || header === null) {

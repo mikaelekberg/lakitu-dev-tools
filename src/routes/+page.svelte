@@ -25,7 +25,7 @@
 	<section aria-label="Available tools">
 		<h2 class="text-2xl font-semibold mb-6">Available Tools</h2>
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-			{#each tools as tool}
+			{#each tools as tool (tool.id)}
 				<ToolCard
 					title={tool.title}
 					description={tool.description}

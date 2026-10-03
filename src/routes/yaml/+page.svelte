@@ -30,7 +30,11 @@
 		const requestId = ++jsonHighlightRequest;
 		const prism = await loadPrism(['json']);
 
-		if (requestId !== jsonHighlightRequest || jsonInput !== currentJsonInput || !prism?.languages.json) {
+		if (
+			requestId !== jsonHighlightRequest ||
+			jsonInput !== currentJsonInput ||
+			!prism?.languages.json
+		) {
 			return;
 		}
 
@@ -50,7 +54,11 @@
 		const requestId = ++yamlHighlightRequest;
 		const prism = await loadPrism(['yaml']);
 
-		if (requestId !== yamlHighlightRequest || yamlInput !== currentYamlInput || !prism?.languages.yaml) {
+		if (
+			requestId !== yamlHighlightRequest ||
+			yamlInput !== currentYamlInput ||
+			!prism?.languages.yaml
+		) {
 			return;
 		}
 
@@ -267,8 +275,7 @@
 					id="json-input"
 					class="textarea textarea-bordered h-96 font-mono text-sm w-full"
 					placeholder={'Enter JSON here, e.g. {"key": "value"}'}
-					bind:value={jsonInput}
-				></textarea>
+					bind:value={jsonInput}></textarea>
 				<div class="mt-2 flex gap-2">
 					<button class="btn btn-sm btn-outline" onclick={handleCopyJson} disabled={!jsonInput}>
 						{#if copyJsonSuccess}
@@ -369,8 +376,7 @@
 					id="yaml-input"
 					class="textarea textarea-bordered h-96 font-mono text-sm w-full"
 					placeholder="Enter YAML here, e.g. key: value"
-					bind:value={yamlInput}
-				></textarea>
+					bind:value={yamlInput}></textarea>
 				<div class="mt-2 flex gap-2">
 					<button class="btn btn-sm btn-outline" onclick={handleCopyYaml} disabled={!yamlInput}>
 						{#if copyYamlSuccess}

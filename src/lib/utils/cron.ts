@@ -174,7 +174,9 @@ export function getCronDescription(expression: string): string {
 
 		return cronstrue.toString(trimmed, options);
 	} catch (error) {
-		throw new Error(error instanceof Error ? error.message : 'Failed to parse cron expression');
+		throw new Error(error instanceof Error ? error.message : 'Failed to parse cron expression', {
+			cause: error
+		});
 	}
 }
 
@@ -227,7 +229,9 @@ function getNextRunsFromExpression(expression: string, count: number, format: Cr
 
 		return runs;
 	} catch (error) {
-		throw new Error(error instanceof Error ? error.message : 'Failed to calculate next run times');
+		throw new Error(error instanceof Error ? error.message : 'Failed to calculate next run times', {
+			cause: error
+		});
 	}
 }
 

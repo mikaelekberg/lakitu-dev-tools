@@ -87,9 +87,7 @@ export interface QueryResult {
  * Token types for query path parsing
  */
 type PathToken =
-	| { type: 'property'; key: string }
-	| { type: 'index'; index: number }
-	| { type: 'wildcard' };
+	{ type: 'property'; key: string } | { type: 'index'; index: number } | { type: 'wildcard' };
 
 /**
  * Tokenizes a jq-like query path into segments.
@@ -209,7 +207,7 @@ function applyTokens(data: unknown, tokens: PathToken[]): unknown {
 				return applyTokens(item, remainingTokens);
 			} catch (error) {
 				if (error instanceof Error) {
-					throw new Error(`At index [${index}]: ${error.message}`);
+					throw new Error(`At index [${index}]: ${error.message}`, { cause: error });
 				}
 				throw error;
 			}

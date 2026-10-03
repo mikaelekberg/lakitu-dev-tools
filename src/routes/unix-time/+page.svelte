@@ -248,7 +248,7 @@
 						onchange={handleTimezoneChange}
 					>
 						<option value={localTimezone}>Local ({localTimezone})</option>
-						{#each COMMON_TIMEZONES as tz}
+						{#each COMMON_TIMEZONES as tz (tz)}
 							{#if tz.value !== localTimezone}
 								<option value={tz.value}>{tz.label}</option>
 							{/if}

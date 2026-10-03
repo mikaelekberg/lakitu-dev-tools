@@ -179,7 +179,7 @@
 						onchange={loadCommonPattern}
 					>
 						<option value="" disabled selected>Select a pattern...</option>
-						{#each commonPatterns as cp}
+						{#each commonPatterns as cp, i (i)}
 							<option value={cp.name}>{cp.name}</option>
 						{/each}
 					</select>
@@ -224,8 +224,7 @@
 			<textarea
 				class="textarea textarea-bordered h-64 font-mono text-sm w-full resize-none"
 				placeholder="Enter text to test against..."
-				bind:value={testString}
-			></textarea>
+				bind:value={testString}></textarea>
 			<div class="flex justify-end mt-2">
 				<button class="btn btn-sm btn-ghost" onclick={loadSampleText}>Load Sample</button>
 			</div>
@@ -273,7 +272,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each result.matches as match, i}
+							{#each result.matches as match, i (i)}
 								<tr>
 									<td class="font-mono text-base-content/70">{i + 1}</td>
 									<td class="font-mono">
@@ -282,7 +281,7 @@
 									<td class="font-mono text-sm text-base-content/70">{match.start}-{match.end}</td>
 									<td class="font-mono text-sm">
 										{#if match.groups.length > 0}
-											{#each match.groups as group, j}
+											{#each match.groups as group, j (j)}
 												<span class="inline-block bg-primary/30 px-1 rounded mr-1 mb-1">
 													[{j + 1}] {group}
 												</span>
