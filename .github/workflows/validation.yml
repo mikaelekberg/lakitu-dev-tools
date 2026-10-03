@@ -12,6 +12,8 @@ permissions:
 jobs:
   validation:
     name: Validate application
+    outputs:
+      wrangler-version: ${{ steps.wrangler.outputs.version }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -31,6 +33,13 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Package self-contained Cloudflare worker
+        run: |
+          npx --no-install wrangler pages functions build --build-output-directory .svelte-kit/cloudflare --outdir .svelte-kit/cloudflare-worker --compatibility-flags nodejs_compat
+          cp .svelte-kit/cloudflare-worker/_worker.js .svelte-kit/cloudflare/_worker.js
+      - name: Record validated Wrangler version
+        id: wrangler
+        run: echo "version=$(node -p "require('wrangler/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Install browser
         run: npx playwright install --with-deps chromium
       - name: Browser smoke tests
@@ -54,7 +63,6 @@ jobs:
       deployments: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
@@ -62,13 +70,18 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: validated-cloudflare-build
-          path: .svelte-kit/cloudflare
+          path: ${{ runner.temp }}/cloudflare-deploy/site
+      - name: Initialize isolated deployment tooling
+        run: echo '{}' > "${{ runner.temp }}/cloudflare-deploy/package.json"
       - name: Deploy preview
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
         with:
+          workingDirectory: ${{ runner.temp }}/cloudflare-deploy
+          wranglerVersion: ${{ needs.validation.outputs.wrangler-version }}
+          packageManager: npm
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .svelte-kit/cloudflare --project-name=lakitu-dev-tools --branch=${{ github.event.pull_request.head.ref }}
+          command: pages deploy site --commit-hash=${{ github.sha }} --project-name=lakitu-dev-tools --branch=${{ github.event.pull_request.head.ref }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-production:
@@ -80,7 +93,6 @@ jobs:
       contents: read
       deployments: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
@@ -88,13 +100,18 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: validated-cloudflare-build
-          path: .svelte-kit/cloudflare
+          path: ${{ runner.temp }}/cloudflare-deploy/site
+      - name: Initialize isolated deployment tooling
+        run: echo '{}' > "${{ runner.temp }}/cloudflare-deploy/package.json"
       - name: Deploy production
         uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
         with:
+          workingDirectory: ${{ runner.temp }}/cloudflare-deploy
+          wranglerVersion: ${{ needs.validation.outputs.wrangler-version }}
+          packageManager: npm
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .svelte-kit/cloudflare --project-name=lakitu-dev-tools --branch=main
+          command: pages deploy site --commit-hash=${{ github.sha }} --project-name=lakitu-dev-tools --branch=main
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
   bundle-size:
@@ -126,5 +143,7 @@ jobs:
         run: |
           npm ci
           npm run build
+          npx --no-install wrangler pages functions build --build-output-directory .svelte-kit/cloudflare --outdir .svelte-kit/cloudflare-worker --compatibility-flags nodejs_compat
+          cp .svelte-kit/cloudflare-worker/_worker.js .svelte-kit/cloudflare/_worker.js
       - name: Compare compressed bundle sizes
         run: python3 scripts/bundle-size.py baseline/.svelte-kit/cloudflare current-build >> "$GITHUB_STEP_SUMMARY"
